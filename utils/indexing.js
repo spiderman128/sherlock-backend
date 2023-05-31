@@ -68,15 +68,17 @@ export async function returnMatchedFiller(
         return fillerMap.get(getFillerID(id));
     });
 
-    let pageContent = [];
+    let pageContents = [];
     if (contentsMapPath) {
         const contentsMap = new Map(
             JSON.parse(await fs.readFile(contentsMapPath, 'utf-8'))
         );
 
-        pageContent = result.neighbors.map((id) => {
+        pageContents = result.neighbors.map((id) => {
             return contentsMap.get(getCounterID(id));
         });
+        console.log('');
+        console.log(pageContents);
     }
 
     if (debug) {
@@ -86,7 +88,7 @@ export async function returnMatchedFiller(
             } milliseconds (ie. converting embedding ID into fillerText value).`
         );
     }
-    return { ...result, fillers, pageContent };
+    return { ...result, fillers, pageContents };
 }
 
 /**
