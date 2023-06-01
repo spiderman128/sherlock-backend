@@ -169,6 +169,10 @@ const server = app.listen(port, async () => {
         contentsMapPath
     );
 
+    await saveDataToS3(s3, bucketName, './data/to_process', 'to_process');
+    await saveDataToS3(s3, bucketName, './data/processed', 'processed');
+    await saveDataToS3(s3, bucketName, './data/indexing', 'indexing');
+
     console.log(
         `\n----------\nSERVER READY:\n----------\nServer listening on port ${port}\n`
     );
