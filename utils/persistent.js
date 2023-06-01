@@ -1,4 +1,7 @@
 import S3 from 'aws-sdk/clients/s3.js';
+import path from 'path';
+import fs from 'fs/promises';
+import crypto from 'crypto';
 
 export const s3 = new S3({
     endpoint: `https://${process.env.accountid}.r2.cloudflarestorage.com`,
@@ -7,47 +10,151 @@ export const s3 = new S3({
     signatureVersion: 'v4',
 });
 
+async function checksum(filePath) {
+    const hash = crypto.createHash('md5');
+    const data = await fs.readFile(filePath);
+    hash.update(data);
+    return hash.digest('hex');
+}
+
+export async function saveDataToS3(s3, bucketName, localPath, s3Path) {
+    // Check if localPath is a directory
+    const stats = await fs.stat(localPath);
+    if (stats.isDirectory()) {
+        const files = await fs.readdir(localPath);
+        for (const file of files) {
+            const filePath = path.join(localPath, file);
+            const s3Key = `${s3Path}/${file}`;
+
+            // Check if file exists in S3 and compare checksums
+            try {
+                const objectData = await s3
+                    .headObject({
+                        Bucket: bucketName,
+                        Key: s3Key,
+                    })
+                    .promise();
+
+                const localChecksum = await checksum(filePath);
+                const s3Checksum = objectData.Metadata.checksum;
+
+                if (localChecksum !== s3Checksum) {
+                    // Upload new or changed file to S3
+                    const fileData = await fs.readFile(filePath);
+                    await s3
+                        .putObject({
+                            Bucket: bucketName,
+                            Key: s3Key,
+                            Body: fileData,
+                            Metadata: {
+                                checksum: localChecksum,
+                            },
+                        })
+                        .promise();
+                }
+            } catch (err) {
+                if (err.code === 'NotFound') {
+                    // File does not exist in S3, upload it
+                    const fileData = await fs.readFile(filePath);
+                    await s3
+                        .putObject({
+                            Bucket: bucketName,
+                            Key: s3Key,
+                            Body: fileData,
+                            Metadata: {
+                                checksum: await checksum(filePath),
+                            },
+                        })
+                        .promise();
+                } else {
+                    console.error(err);
+                }
+            }
+        }
+    } else {
+        // localPath is a file, upload it to S3
+        const data = await fs.readFile(localPath);
+        await s3
+            .putObject({
+                Bucket: bucketName,
+                Key: s3Path,
+                Body: data,
+            })
+            .promise();
+    }
+}
+
+async function loadDataFromS3(s3, bucketName, s3Path, localPath) {
+    const data = await s3
+        .listObjectsV2({
+            Bucket: bucketName,
+            Prefix: s3Path,
+        })
+        .promise();
+
+    for (const object of data.Contents) {
+        const filePath = path.join(localPath, path.basename(object.Key));
+
+        try {
+            const objectData = await s3
+                .headObject({
+                    Bucket: bucketName,
+                    Key: object.Key,
+                })
+                .promise();
+
+            // Check if local file exists and compare checksums
+            try {
+                const stats = await fs.stat(filePath);
+                if (stats.isFile()) {
+                    const localChecksum = await checksum(filePath);
+                    const s3Checksum = objectData.Metadata.checksum;
+
+                    if (localChecksum !== s3Checksum) {
+                        // Download new or changed file from S3
+                        const objectData = await s3
+                            .getObject({
+                                Bucket: bucketName,
+                                Key: object.Key,
+                            })
+                            .promise();
+
+                        await fs.writeFile(filePath, objectData.Body);
+                    }
+                }
+            } catch (err) {
+                if (err.code === 'ENOENT') {
+                    // Local file does not exist, download it from S3
+                    const objectData = await s3
+                        .getObject({
+                            Bucket: bucketName,
+                            Key: object.Key,
+                        })
+                        .promise();
+
+                    await fs.mkdir(path.dirname(filePath), { recursive: true });
+                    await fs.writeFile(filePath, objectData.Body);
+                } else {
+                    console.error(err);
+                }
+            }
+        } catch (err) {
+            console.error(err);
+        }
+    }
+}
+
+// -------------------------------------------------------//
+// TEST THE CLOUDFLARE CONNECTION AND GET PRESIGNED LINKS //
+// ------------------------------------------------------ //
+
 console.log(await s3.listBuckets().promise());
-//=> {
-//=>   Buckets: [
-//=>     { Name: 'user-uploads', CreationDate: 2022-04-13T21:23:47.102Z },
-//=>     { Name: 'my-bucket-name', CreationDate: 2022-05-07T02:46:49.218Z }
-//=>   ],
-//=>   Owner: {
-//=>     DisplayName: '...',
-//=>     ID: '...'
-//=>   }
-//=> }
 
 console.log(
     await s3
         .listObjects({ Bucket: 'airchat-persistent-vectorstorage' })
         .promise()
 );
-//=> {
-//=>   IsTruncated: false,
-//=>   Name: 'my-bucket-name',
-//=>   CommonPrefixes: [],
-//=>   MaxKeys: 1000,
-//=>   Contents: [
-//=>     {
-//=>       Key: 'cat.png',
-//=>       LastModified: 2022-05-07T02:50:45.616Z,
-//=>       ETag: '"c4da329b38467509049e615c11b0c48a"',
-//=>       ChecksumAlgorithm: [],
-//=>       Size: 751832,
-//=>       Owner: [Object]
-//=>     },
-//=>     {
-//=>       Key: 'todos.txt',
-//=>       LastModified: 2022-05-07T21:37:17.150Z,
-//=>       ETag: '"29d911f495d1ba7cb3a4d7d15e63236a"',
-//=>       ChecksumAlgorithm: [],
-//=>       Size: 279,
-//=>       Owner: [Object]
-//=>     }
-//=>   ]
-//=> }
 
 // Use the expires property to determine how long the presigned link is valid.
 console.log(

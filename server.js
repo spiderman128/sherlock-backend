@@ -69,6 +69,22 @@ app.post('/search/update', async (req, res) => {
         DEBUG,
         contentsMapPath
     );
+
+    await saveDataToS3(s3, bucketName, './data/to_process', 'to_process');
+    await saveDataToS3(s3, bucketName, './data/processed', 'processed');
+    await saveDataToS3(
+        s3,
+        bucketName,
+        './data/indexing/vectorIndex.hnsw',
+        'vectorIndex.hnsw'
+    );
+    await saveDataToS3(
+        s3,
+        bucketName,
+        './data/indexing/contentsMap.json',
+        'contentsMap.json'
+    );
+
     res.json({
         message: 'Embeddings Updated',
     });
@@ -88,8 +104,53 @@ app.delete('/api/embeddings/:id', async (req, res) => {
     res.send({ success: `Embedding ${idToDelete} deleted.` });
 });
 
+// ---------------------------------------------------------- //
+// SAVE EMBEDDINGS FROM THE VECTOR STORE UPON SERVER SHUTDOWN //
+// ---------------------------------------------------------- //
+app.post('/api/save', async (req, res) => {
+    await saveDataToS3(s3, bucketName, './data/to_process', 'to_process');
+    await saveDataToS3(s3, bucketName, './data/processed', 'processed');
+    await saveDataToS3(
+        s3,
+        bucketName,
+        './data/indexing/vectorIndex.hnsw',
+        'vectorIndex.hnsw'
+    );
+    await saveDataToS3(
+        s3,
+        bucketName,
+        './data/indexing/contentsMap.json',
+        'contentsMap.json'
+    );
+    res.json({
+        message: 'Data Saved to S3',
+    });
+});
+
 // Start the server
 app.listen(port, async () => {
+    // --------------------------------------------------------- //
+    // LOAD EMBEDDINGS FROM THE VECTOR STORE UPON SERVER STARTUP //
+    // --------------------------------------------------------- //
+    await loadDataFromS3(s3, bucketName, 'to_process', './data/to_process');
+    await loadDataFromS3(s3, bucketName, 'processed', './data/processed');
+    await loadDataFromS3(
+        s3,
+        bucketName,
+        'vectorIndex.hnsw',
+        './data/indexing/vectorIndex.hnsw'
+    );
+    await loadDataFromS3(
+        s3,
+        bucketName,
+        'contentsMap.json',
+        './data/indexing/contentsMap.json'
+    );
+
+    // ----------------------------------------------------------------- //
+    // ACT ON THE LOCAL DATA THAT JUST GOT OVERWRITTEN BY loadDataFromS3 //
+    // ----------------------------------------------------------------- //
+
     model = await loadModel(DEBUG);
 
     // Check if the indexing exists
