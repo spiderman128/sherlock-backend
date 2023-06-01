@@ -100,6 +100,7 @@ app.delete('/api/embeddings/:id', async (req, res) => {
 // ---------------------------------------------------------- //
 app.post('/api/save', async (req, res) => {
     try {
+        console.log('SAVE DATA TO S3 BUCKET');
         await saveDataToS3(s3, bucketName, './data/to_process', 'to_process');
         await saveDataToS3(s3, bucketName, './data/processed', 'processed');
         await saveDataToS3(s3, bucketName, './data/indexing', 'indexing');
@@ -116,14 +117,15 @@ app.post('/api/save', async (req, res) => {
 });
 
 // Start the server
-app.listen(port, async () => {
+const server = app.listen(port, async () => {
     // --------------------------------------------------------------- //
     // LOAD EMBEDDINGS FROM THE ClOUD VECTOR STORE UPON SERVER STARTUP //
     // --------------------------------------------------------------- //
+    console.log('LOAD DATA FROM S3 BUCKET');
     await loadDataFromS3(s3, bucketName, 'to_process', './data/to_process');
     await loadDataFromS3(s3, bucketName, 'processed', './data/processed');
     await loadDataFromS3(s3, bucketName, 'indexing', './data/indexing');
-    console.log('loaded data from S3 and removed unrecognized local data');
+    console.log('\n\nLOADED DATA FROM S3 + REMOVED UNRECOGNIZED LOCAL DATA\n');
 
     // ------------------------------------------------------------- //
     // ACT ON THE LOCAL DATA THAT JUST GOT UPDATED BY loadDataFromS3 //
@@ -156,6 +158,7 @@ app.listen(port, async () => {
     }
 
     // Add any embeddings grabbed from the to_process folder earlier
+    contentsMapPath = './data/indexing/contentsMap.json';
     await addEmbeddings(
         model,
         dataProcessingPath,
@@ -166,5 +169,21 @@ app.listen(port, async () => {
         contentsMapPath
     );
 
-    console.log(`Server listening on port ${port}`);
+    console.log(
+        `\n----------\nSERVER READY:\n----------\nServer listening on port ${port}\n`
+    );
+});
+
+process.on('SIGINT', async () => {
+    console.log('\nProcess is about to exit. Saving data to S3...');
+
+    await saveDataToS3(s3, bucketName, './data/to_process', 'to_process');
+    await saveDataToS3(s3, bucketName, './data/processed', 'processed');
+    await saveDataToS3(s3, bucketName, './data/indexing', 'indexing');
+
+    console.log('\nData saved to S3. Shutting down...');
+
+    server.close(() => {
+        process.exit(0);
+    });
 });

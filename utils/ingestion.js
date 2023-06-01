@@ -128,3 +128,18 @@ export async function extractPageContentAndMetadata(
         };
     }
 }
+
+export async function createDirectory(s3, bucketName, directoryPath) {
+    // Add a trailing slash if necessary
+    if (!directoryPath.endsWith('/')) {
+        directoryPath += '/';
+    }
+
+    await s3
+        .putObject({
+            Bucket: bucketName,
+            Key: directoryPath,
+            Body: '',
+        })
+        .promise();
+}
