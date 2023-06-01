@@ -8,6 +8,7 @@ import {
     deleteFromIndex,
 } from './utils/indexing.js';
 import express from 'express';
+import s3 from './utils/persistent.js';
 
 const app = express();
 const port = process.env.PORT || 3000;
