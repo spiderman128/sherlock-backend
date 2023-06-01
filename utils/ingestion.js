@@ -1,18 +1,32 @@
 import fs from 'fs/promises';
 import path from 'path';
 
+// This function reads the content of a single file, given its file path, and returns the content as a string. It's useful when you have a specific file and you want to read its content.
 export async function readFileContent(filePath) {
     console.log(`\nReading content`);
     const data = await fs.readFile(filePath, 'utf-8');
     return data;
 }
 
+// This function reads all files in a given directory (but not its subdirectories) and returns a list of those with a specific file extension. It's useful when you want to list all files of a certain type in a single directory.
 export async function getFilesInDirectory(directoryPath, fileType) {
     const files = await fs.readdir(directoryPath);
     const filteredFiles = files.filter(
         (file) => path.extname(file).toLowerCase() === `.${fileType}`
     );
     return filteredFiles;
+}
+
+// This function reads all files in a given directory and its subdirectories, regardless of their file extension, and returns a list of their file paths.
+export async function getFiles(dir) {
+    const dirents = await fs.readdir(dir, { withFileTypes: true });
+    const files = await Promise.all(
+        dirents.map((dirent) => {
+            const res = path.resolve(dir, dirent.name);
+            return dirent.isDirectory() ? getFiles(res) : res;
+        })
+    );
+    return Array.prototype.concat(...files);
 }
 
 async function isDirectoryEmpty(directoryPath) {

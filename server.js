@@ -8,7 +8,7 @@ import {
     deleteFromIndex,
 } from './utils/indexing.js';
 import express from 'express';
-import s3 from './utils/persistent.js';
+import { s3, saveDataToS3, loadDataFromS3 } from './utils/persistent.js';
 
 const app = express();
 const port = process.env.PORT || 3000;
@@ -24,6 +24,7 @@ const maxElements = 100000; // the maximum number of data points.
 const dataProcessingPath = './data/to_process';
 const dataProcessedPath = './data/processed';
 const indexingPath = './data/indexing/vectorIndex.hnsw';
+const bucketName = 'airchat-persistent-vectorstorage';
 const NN = 1; // the number of nearest neighbors to search.
 let indexing, model, contentsMapPath;
 
@@ -59,7 +60,8 @@ app.get('/api/match', async (req, res) => {
 
 // update embeddings
 app.post('/search/update', async (req, res) => {
-    // Add any embeddings grabbed from the to_process folder earlier
+    // Add any embeddings from the to_process folder
+    contentsMapPath = './data/indexing/contentsMap.json';
     await addEmbeddings(
         model,
         dataProcessingPath,
@@ -72,18 +74,7 @@ app.post('/search/update', async (req, res) => {
 
     await saveDataToS3(s3, bucketName, './data/to_process', 'to_process');
     await saveDataToS3(s3, bucketName, './data/processed', 'processed');
-    await saveDataToS3(
-        s3,
-        bucketName,
-        './data/indexing/vectorIndex.hnsw',
-        'vectorIndex.hnsw'
-    );
-    await saveDataToS3(
-        s3,
-        bucketName,
-        './data/indexing/contentsMap.json',
-        'contentsMap.json'
-    );
+    await saveDataToS3(s3, bucketName, './data/indexing', 'indexing');
 
     res.json({
         message: 'Embeddings Updated',
@@ -108,48 +99,35 @@ app.delete('/api/embeddings/:id', async (req, res) => {
 // SAVE EMBEDDINGS FROM THE VECTOR STORE UPON SERVER SHUTDOWN //
 // ---------------------------------------------------------- //
 app.post('/api/save', async (req, res) => {
-    await saveDataToS3(s3, bucketName, './data/to_process', 'to_process');
-    await saveDataToS3(s3, bucketName, './data/processed', 'processed');
-    await saveDataToS3(
-        s3,
-        bucketName,
-        './data/indexing/vectorIndex.hnsw',
-        'vectorIndex.hnsw'
-    );
-    await saveDataToS3(
-        s3,
-        bucketName,
-        './data/indexing/contentsMap.json',
-        'contentsMap.json'
-    );
-    res.json({
-        message: 'Data Saved to S3',
-    });
+    try {
+        await saveDataToS3(s3, bucketName, './data/to_process', 'to_process');
+        await saveDataToS3(s3, bucketName, './data/processed', 'processed');
+        await saveDataToS3(s3, bucketName, './data/indexing', 'indexing');
+        res.json({
+            message: 'Data Saved to S3',
+        });
+    } catch (error) {
+        console.error('Failed to save data to S3:', error);
+        res.status(500).json({
+            message: 'Failed to save data to S3',
+            error: error.message,
+        });
+    }
 });
 
 // Start the server
 app.listen(port, async () => {
-    // --------------------------------------------------------- //
-    // LOAD EMBEDDINGS FROM THE VECTOR STORE UPON SERVER STARTUP //
-    // --------------------------------------------------------- //
+    // --------------------------------------------------------------- //
+    // LOAD EMBEDDINGS FROM THE ClOUD VECTOR STORE UPON SERVER STARTUP //
+    // --------------------------------------------------------------- //
     await loadDataFromS3(s3, bucketName, 'to_process', './data/to_process');
     await loadDataFromS3(s3, bucketName, 'processed', './data/processed');
-    await loadDataFromS3(
-        s3,
-        bucketName,
-        'vectorIndex.hnsw',
-        './data/indexing/vectorIndex.hnsw'
-    );
-    await loadDataFromS3(
-        s3,
-        bucketName,
-        'contentsMap.json',
-        './data/indexing/contentsMap.json'
-    );
+    await loadDataFromS3(s3, bucketName, 'indexing', './data/indexing');
+    console.log('loaded data from S3 and removed unrecognized local data');
 
-    // ----------------------------------------------------------------- //
-    // ACT ON THE LOCAL DATA THAT JUST GOT OVERWRITTEN BY loadDataFromS3 //
-    // ----------------------------------------------------------------- //
+    // ------------------------------------------------------------- //
+    // ACT ON THE LOCAL DATA THAT JUST GOT UPDATED BY loadDataFromS3 //
+    // ------------------------------------------------------------- //
 
     model = await loadModel(DEBUG);
 

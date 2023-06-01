@@ -7,7 +7,7 @@
     "license": "MIT",
     "scripts": {
         "preinstall": "apt-get update && apt-get install -y build-essential python3",
-        "start": "node server.js",
+        "start": "node -r dotenv/config server.js",
         "cloud": "node -r dotenv/config utils/persistent.js"
     },
     "dependencies": {
@@ -16,10 +16,12 @@
         "@tensorflow/tfjs-backend-cpu": "^4.6.0",
         "@tensorflow/tfjs-node": "^4.6.0",
         "@tensorflow/tfjs-node-gpu": "^4.6.0",
-        "aws-sdk": "^2.1388.0",
-        "dotenv": "^16.1.1",
         "express": "^4.18.2",
-        "hnswlib-node": "^1.4.2"
+        "hnswlib-node": "^1.4.2",
+        "aws-sdk": "^2.1388.0",
+        "crypto": "^1.0.1",
+        "dotenv": "^16.1.1",
+        "glob-promise": "^6.0.2"
     },
     "devDependencies": {}
 }
