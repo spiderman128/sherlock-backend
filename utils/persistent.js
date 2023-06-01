@@ -84,7 +84,7 @@ export async function saveDataToS3(s3, bucketName, localPath, s3Path) {
     }
 }
 
-async function loadDataFromS3(s3, bucketName, s3Path, localPath) {
+export async function loadDataFromS3(s3, bucketName, s3Path, localPath) {
     const data = await s3
         .listObjectsV2({
             Bucket: bucketName,
