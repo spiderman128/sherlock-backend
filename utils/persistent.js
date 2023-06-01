@@ -2,7 +2,6 @@ import S3 from 'aws-sdk/clients/s3.js';
 import path from 'path';
 import fs from 'fs/promises';
 import crypto from 'crypto';
-import { getFiles } from './ingestion.js';
 
 export const s3 = new S3({
     endpoint: `https://${process.env.accountid}.r2.cloudflarestorage.com`,

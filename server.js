@@ -85,14 +85,37 @@ app.post('/search/update', async (req, res) => {
 // DELETE EMBEDDINGS FROM THE VECTOR STORE (See Examples Below) //
 // ------------------------------------------------------------ //
 // Delete Embedding
-app.delete('/api/embeddings/:id', async (req, res) => {
-    const idToDelete = parseInt(req.params.id);
-    if (!idToDelete) {
-        res.status(400).send({ error: 'Missing id parameter' });
+app.delete('/api/embeddings/:param', async (req, res) => {
+    const paramToDelete = req.params.param;
+    let idToDelete;
+    let textToDelete;
+
+    // Check if the parameter is numeric or text
+    if (!isNaN(parseInt(paramToDelete))) {
+        idToDelete = parseInt(paramToDelete);
+    } else {
+        textToDelete = paramToDelete;
+    }
+
+    if (!idToDelete && !textToDelete) {
+        res.status(400).send({ error: 'Missing id or text parameter' });
         return;
     }
-    deleteFromIndex(indexingPath, indexing, idToDelete, DEBUG);
-    res.send({ success: `Embedding ${idToDelete} deleted.` });
+
+    deleteFromIndex(indexingPath, indexing, idToDelete, textToDelete, DEBUG);
+
+    if (idToDelete) {
+        res.send({ success: `Embedding with id ${idToDelete} deleted.` });
+    } else {
+        res.send({ success: `Embedding with text "${textToDelete}" deleted.` });
+    }
+
+    await saveDataToS3(s3, bucketName, './data/indexing', 'indexing').catch(
+        (err) => {
+            // Do some logging here or handle error
+            console.error(`Error saving data to S3: ${err}`);
+        }
+    );
 });
 
 // ---------------------------------------------------------- //

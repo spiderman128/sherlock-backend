@@ -75,7 +75,7 @@ export async function returnMatchedFiller(
         );
 
         pageContents = result.neighbors.map((id) => {
-            return contentsMap.get(getCounterID(id));
+            return contentsMap.get(id);
         });
         console.log('');
         console.log(pageContents);
@@ -89,6 +89,22 @@ export async function returnMatchedFiller(
         );
     }
     return { ...result, fillers, pageContents };
+}
+
+export function getContentByKey(arr, key) {
+    // Loop through each array element
+    for (let i = 0; i < arr.length; i++) {
+        // Check if the key of the current element matches the given key
+        if (arr[i][0] === key) {
+            // If a match is found, return the 'fillerID' and 'pageContent'
+            return {
+                fillerID: arr[i][1].fillerID,
+                pageContent: arr[i][1].pageContent,
+            };
+        }
+    }
+    // If no match is found, return null
+    return null;
 }
 
 /**
@@ -185,7 +201,11 @@ export async function addBulkToContentsIndex(path, newContentIDs, debug) {
             contentMap = existingMap;
             console.log('Successfully updated Map.');
         } else {
-            newContentIDs.forEach(([key, value]) => contentMap.set(key, value));
+            newContentIDs.forEach(([key, value]) => {
+                console.log(key);
+                console.log(value);
+                contentMap.set(key, value);
+            });
             console.log('Successfully created Map.');
         }
 
@@ -203,32 +223,6 @@ export async function addBulkToContentsIndex(path, newContentIDs, debug) {
         }
     } catch (error) {
         console.log('Error:', error);
-    }
-}
-
-/**
- * Delete the Embeddings to the indexing.
- *
- * @param {string} path - The path to save the indexing.
- * @param {Object} indexing - The indexing to add the point to
- * @param {number} ID - The ID to add
- * @param {boolean} debug - Whether to print debug information
- */
-export function deleteFromIndex(path, indexing, ID, debug) {
-    const start = performance.now();
-    try {
-        indexing.markDelete(ID);
-        indexing.writeIndexSync(path);
-    } catch (e) {
-        console.log(e);
-    }
-
-    if (debug) {
-        console.log(
-            `\nDelete from index took ${
-                performance.now() - start
-            } milliseconds.`
-        );
     }
 }
 
@@ -260,6 +254,57 @@ export async function loadIndexFromFile(
     }
 
     return indexing;
+}
+
+/**
+ * Delete the Embeddings to the indexing.
+ *
+ * @param {string} path - The path to the indexing being deleted from
+ * @param {Object} indexing - The indexing to delete from
+ * @param {number} ID - The ID to search for and delete
+ * @param {string} text - The text to search for and delete
+ * @param {boolean} debug - Whether to print debug information
+ */
+export function deleteFromIndex(path, indexing, ID, text, debug) {
+    const start = performance.now();
+    try {
+        if (text) {
+            const pathToReferenceTable = './data/contentsMap.json';
+            const returnID = convertTextToID(text, pathToReferenceTable);
+
+            // Check if the ID is valid before using it for deletion
+            if (returnID) {
+                ID = returnID;
+            }
+        }
+        indexing.markDelete(ID);
+        indexing.writeIndexSync(path);
+        console.log('Embedding Deleted');
+    } catch (e) {
+        console.log(e);
+    }
+
+    if (debug) {
+        console.log(
+            `\nDelete from index took ${
+                performance.now() - start
+            } milliseconds.`
+        );
+    }
+}
+
+async function convertTextToID(text, mapPath) {
+    const existingData = await fs.readFile(mapPath, 'utf-8');
+    const map = new Map(JSON.parse(existingData));
+
+    // Find Key by Value
+    for (let [key, val] of map.entries()) {
+        if (val.pageContent === text) {
+            return key;
+        }
+    }
+    console.log('No ID associated with the input text');
+    return null;
 }
 
 /**
@@ -340,8 +385,16 @@ export async function addEmbeddings(
         // Add the embedding to the indexing and append to the contentsMap
         for (let i = 0; i < fillersIDs.length; i++) {
             counterID += 1;
-            newContentIDs.push([counterID, contents[i]]);
-            newIDs.push(createID(counterID, fillersIDs[i]));
+            const ID = createID(counterID, fillersIDs[i]);
+            newContentIDs.push([
+                ID,
+                {
+                    counterID,
+                    fillerID: fillersIDs[i],
+                    pageContent: contents[i],
+                },
+            ]);
+            newIDs.push(ID);
         }
         console.log(newIDs);
 
