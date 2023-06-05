@@ -57,7 +57,10 @@ app.post('/search/update', async (req, res) => {
 // --------------------------------------------------------------------- //
 // ** SINGLE OBJ ACTION **: ADD EMBEDDING TO SPECIFIC ORGID VECTOR STORE //
 // --------------------------------------------------------------------- //
-// Pass a single JSON object {text: " ", orgId: " "} to be embedded
+// Pass a single JSON object {questionText: " ", answerText: " ", orgId: " "} to be embedded
+// questionText = the text to be embedded
+// answerText = the text to be returned when it's corresonding 'questionText' is the most similar match on fetchEmbeddings(userQuestion, orgId) calls
+// ordID = the unique identifier for selecting the right .hnsw file to add the embedded text to
 app.post('/api/embed', async (req, res) => {
     // Add
     // Code
