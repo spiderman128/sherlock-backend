@@ -58,17 +58,21 @@ app.post('/search/update', async (req, res) => {
 // ** SINGLE OBJ ACTION **: ADD EMBEDDING TO SPECIFIC ORGID VECTOR STORE //
 // --------------------------------------------------------------------- //
 // Pass a single JSON object {text: " ", orgId: " "} to be embedded
-// Add
-// Code
-// Here
+app.post('/api/embed', async (req, res) => {
+    // Add
+    // Code
+    // Here
+});
 
 // --------------------------------------------------------------------------------- //
 // ** SINGLE OBJ ACTION **: FETCH EMBEDDING MATCHES FROM SPECIFIC ORGID VECTOR STORE //
 // --------------------------------------------------------------------------------- //
 // Get Matched Filler
 app.get('/api/match', async (req, res) => {
+    // Grab the paramaters
     const sentence = req.query.sentence;
     const nearestNeighbors = parseInt(req.query.neighbors) || NN;
+
     const includeContent = req.query.includecontent || undefined;
     if (!sentence) {
         res.status(400).send({ error: 'Missing sentence parameter' });
@@ -96,7 +100,7 @@ app.get('/api/match', async (req, res) => {
 // ** SINGLE OBJ ACTION **: DELETE EMBEDDINGS FROM SPECIFIC ORGID VECTOR STORE //
 // --------------------------------------------------------------------------- //
 // Delete Embedding
-app.delete('/api/embeddings/:param', async (req, res) => {
+app.delete('/api/delete/:param', async (req, res) => {
     const paramToDelete = req.params.param;
     let idToDelete;
     let textToDelete;
