@@ -28,9 +28,43 @@ const bucketName = 'airchat-persistent-vectorstorage';
 const NN = 1; // the number of nearest neighbors to search.
 let indexing, model, contentsMapPath;
 
-// ----------------------------------------------------- //
-// MAKE QUERIES TO THE VECTOR STORE (See Examples Below) //
-// ----------------------------------------------------- //
+// ---------------------------------------------------------------------------- //
+// ** BULK ACTION **: EMBEDD FILES W/ SPECIFIC ORGID IN THE "to_process" FOLDER //
+// ---------------------------------------------------------------------------- //
+// update embeddings
+app.post('/search/update', async (req, res) => {
+    // Add any embeddings from the to_process folder
+    contentsMapPath = './data/indexing/contentsMap.json';
+    await addEmbeddings(
+        model,
+        dataProcessingPath,
+        dataProcessedPath,
+        indexingPath,
+        indexing,
+        DEBUG,
+        contentsMapPath
+    );
+
+    await saveDataToS3(s3, bucketName, './data/to_process', 'to_process');
+    await saveDataToS3(s3, bucketName, './data/processed', 'processed');
+    await saveDataToS3(s3, bucketName, './data/indexing', 'indexing');
+
+    res.json({
+        message: 'Embeddings Updated',
+    });
+});
+
+// --------------------------------------------------------------------- //
+// ** SINGLE OBJ ACTION **: ADD EMBEDDING TO SPECIFIC ORGID VECTOR STORE //
+// --------------------------------------------------------------------- //
+// Pass a single JSON object {text: " ", orgId: " "} to be embedded
+// Add
+// Code
+// Here
+
+// --------------------------------------------------------------------------------- //
+// ** SINGLE OBJ ACTION **: FETCH EMBEDDING MATCHES FROM SPECIFIC ORGID VECTOR STORE //
+// --------------------------------------------------------------------------------- //
 // Get Matched Filler
 app.get('/api/match', async (req, res) => {
     const sentence = req.query.sentence;
@@ -58,32 +92,9 @@ app.get('/api/match', async (req, res) => {
     });
 });
 
-// update embeddings
-app.post('/search/update', async (req, res) => {
-    // Add any embeddings from the to_process folder
-    contentsMapPath = './data/indexing/contentsMap.json';
-    await addEmbeddings(
-        model,
-        dataProcessingPath,
-        dataProcessedPath,
-        indexingPath,
-        indexing,
-        DEBUG,
-        contentsMapPath
-    );
-
-    await saveDataToS3(s3, bucketName, './data/to_process', 'to_process');
-    await saveDataToS3(s3, bucketName, './data/processed', 'processed');
-    await saveDataToS3(s3, bucketName, './data/indexing', 'indexing');
-
-    res.json({
-        message: 'Embeddings Updated',
-    });
-});
-
-// ------------------------------------------------------------ //
-// DELETE EMBEDDINGS FROM THE VECTOR STORE (See Examples Below) //
-// ------------------------------------------------------------ //
+// --------------------------------------------------------------------------- //
+// ** SINGLE OBJ ACTION **: DELETE EMBEDDINGS FROM SPECIFIC ORGID VECTOR STORE //
+// --------------------------------------------------------------------------- //
 // Delete Embedding
 app.delete('/api/embeddings/:param', async (req, res) => {
     const paramToDelete = req.params.param;
@@ -118,9 +129,9 @@ app.delete('/api/embeddings/:param', async (req, res) => {
     );
 });
 
-// ---------------------------------------------------------- //
-// SAVE EMBEDDINGS FROM THE VECTOR STORE UPON SERVER SHUTDOWN //
-// ---------------------------------------------------------- //
+// ----------------------------------------------------------------------------- //
+// ** BULK ACTION **: SAVE EMBEDDINGS FROM THE VECTOR STORE UPON SERVER SHUTDOWN //
+// ----------------------------------------------------------------------------- //
 app.post('/api/save', async (req, res) => {
     try {
         console.log('SAVE DATA TO S3 BUCKET');
@@ -139,6 +150,9 @@ app.post('/api/save', async (req, res) => {
     }
 });
 
+// ------------------ //
+// ** SERVER START ** //
+// ------------------ //
 // Start the server
 const server = app.listen(port, async () => {
     // --------------------------------------------------------------- //
@@ -200,6 +214,10 @@ const server = app.listen(port, async () => {
         `\n----------\nSERVER READY:\n----------\nServer listening on port ${port}\n`
     );
 });
+
+// ----------------------------------------------------------- //
+// ** SERVER ACTION **: ON SERVER SHUTDOWN, PUSH CHANGES TO S3 //
+// ----------------------------------------------------------- //
 
 process.on('SIGINT', async () => {
     console.log('\nProcess is about to exit. Saving data to S3...');
