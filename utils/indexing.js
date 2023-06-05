@@ -1,9 +1,12 @@
-import pkg from 'hnswlib-node'; // Import the HNSW library
+import pkg from "hnswlib-node"; // Import the HNSW library
 const { HierarchicalNSW } = pkg;
-import fillerMap from './fillerMap.js';
-import { convertToEmbedding } from './embedding.js';
-import { checkFileExists, extractPageContentAndMetadata } from './ingestion.js';
-import fs from 'fs/promises';
+import fillerMap from "./fillerMap.js";
+import { convertToEmbedding } from "./embedding.js";
+import { checkFileExists, extractPageContentAndMetadata } from "./ingestion.js";
+import QnAModel from "../models/qna.model.js";
+
+const numDimensions = 512; // the length of data point vector that will be indexed.
+const maxElements = 100000; // the maximum number of data points.
 
 /**
  * Search the sentence in the indexing and return the nearest neighbors.
@@ -16,23 +19,23 @@ import fs from 'fs/promises';
  * @returns - The nearest neighbors which contains distances and IDs with the embedding.
  */
 export async function vectorSearch(
-    sentences,
-    model,
-    indexing,
-    nearestNeighbors,
-    debug = false
+  sentences,
+  model,
+  indexing,
+  nearestNeighbors,
+  debug = false
 ) {
-    // Convert the sentence to an embedding.
-    const queryVector = await convertToEmbedding(model, sentences, debug);
+  // Convert the sentence to an embedding.
+  const queryVector = await convertToEmbedding(model, sentences, debug);
 
-    const start = performance.now();
+  const start = performance.now();
 
-    const result = indexing.searchKnn(queryVector[0], nearestNeighbors);
-    if (debug) {
-        console.log(`\nSearch took ${performance.now() - start} milliseconds.`);
-    }
+  const result = indexing.searchKnn(queryVector[0], nearestNeighbors);
+  if (debug) {
+    console.log(`\nSearch took ${performance.now() - start} milliseconds.`);
+  }
 
-    return { ...result, embedding: queryVector[0] };
+  return { ...result, embedding: queryVector[0] };
 }
 
 /**
@@ -46,64 +49,60 @@ export async function vectorSearch(
  * @returns - The matched filler
  */
 export async function returnMatchedFiller(
-    indexing,
-    model,
-    text,
-    nearestNeighbors,
-    debug,
-    contentsMapPath
+  indexingPath,
+  model,
+  text,
+  nearestNeighbors,
+  debug
 ) {
-    let result = await vectorSearch(
-        [text],
-        model,
-        indexing,
-        nearestNeighbors,
-        debug
+  // Load the existing index
+  const indexing = await loadIndexFromFile(
+    indexingPath,
+    numDimensions,
+    maxElements,
+    debug
+  );
+
+  let result = await vectorSearch(
+    [text],
+    model,
+    indexing,
+    nearestNeighbors,
+    debug
+  );
+
+  let start = performance.now();
+
+  const firstNeighbor = result.neighbors[0];
+  const qna = await QnAModel.getQnA(firstNeighbor);
+
+  if (debug) {
+    console.log(
+      `\nSearching post processing took ${
+        performance.now() - start
+      } milliseconds (ie. converting embedding ID into fillerText value).`
     );
-
-    let start = performance.now();
-
-    const fillers = result.neighbors.map((id) => {
-        return fillerMap.get(getFillerID(id));
-    });
-
-    let pageContents = [];
-    if (contentsMapPath) {
-        const contentsMap = new Map(
-            JSON.parse(await fs.readFile(contentsMapPath, 'utf-8'))
-        );
-
-        pageContents = result.neighbors.map((id) => {
-            return contentsMap.get(id);
-        });
-        console.log('');
-        console.log(pageContents);
-    }
-
-    if (debug) {
-        console.log(
-            `\nSearching post processing took ${
-                performance.now() - start
-            } milliseconds (ie. converting embedding ID into fillerText value).`
-        );
-    }
-    return { ...result, fillers, pageContents };
+  }
+  return {
+    closestMatchingQuestion: qna.question,
+    answerToQuestion: qna.answer,
+  };
 }
 
 export function getContentByKey(arr, key) {
-    // Loop through each array element
-    for (const element of arr) {
-        // Check if the key of the current element matches the given key
-        if (element[0] === key) {
-            // If a match is found, return the 'fillerID' and 'pageContent'
-            return {
-                fillerID: element[1].fillerID,
-                pageContent: element[1].pageContent,
-            };
-        }
+  // Loop through each array element
+  for (const element of arr) {
+    // Check if the key of the current element matches the given key
+    if (element[0] === key) {
+      // If a match is found, return the 'fillerID' and 'pageContent'
+      return {
+        fillerID: element[1].fillerID,
+        pageContent: element[1].pageContent,
+      };
     }
-    // If no match is found, return null
-    return null;
+  }
+  // If no match is found, return null
+  return null;
 }
 
 /**
@@ -115,42 +114,54 @@ export function getContentByKey(arr, key) {
  * @param {boolean} debug - Whether to print debug information
  * @returns - The indexing
  */
-export function buildIndexing(path, numDimensions, maxElements, debug = false) {
-    const start = performance.now();
+export function buildIndexing(
+  indexingPath,
+  numDimensions,
+  maxElements,
+  debug = false
+) {
+  const start = performance.now();
 
-    const indexing = new HierarchicalNSW('cosine', numDimensions);
-    indexing.initIndex(maxElements);
+  const indexing = new HierarchicalNSW("cosine", numDimensions);
+  indexing.initIndex(maxElements);
 
-    indexing.writeIndexSync(path);
+  indexing.writeIndexSync(indexingPath);
 
-    if (debug) {
-        console.log(
-            `\nBuilding Index took ${performance.now() - start} milliseconds.`
-        );
-    }
-    return indexing;
+  if (debug) {
+    console.log(
+      `\nBuilding Index took ${performance.now() - start} milliseconds.`
+    );
+  }
+  return indexing;
 }
 
-/**
- * Add the Embeddings to the indexing.
- *
- * @param {string} path - The path to save the indexing.
- * @param {Object} indexing - The indexing to add the point to
- * @param {array} embedding - The embedding to add
- * @param {number} ID - The ID to add
- * @param {boolean} debug - Whether to print debug information
- */
-export function addToIndex(path, indexing, embedding, ID, debug) {
-    const start = performance.now();
+export async function addToIndex(
+  indexingPath,
+  model,
+  orgId,
+  question,
+  answer,
+  debug
+) {
+  const start = performance.now();
 
-    indexing.addPoint(embedding, ID);
-    indexing.writeIndexSync(path);
+  const indexing = await loadIndexFromFile(
+    indexingPath,
+    numDimensions,
+    maxElements,
+    debug
+  );
+  // Convert the text to an embedding.
+  const embedding = await convertToEmbedding(model, question, debug);
+  const ID = await QnAModel.insert(orgId, question, answer);
+  indexing.addPoint(embedding[0], ID);
+  indexing.writeIndexSync(indexingPath);
 
-    if (debug) {
-        console.log(
-            `\nAdd to index took ${performance.now() - start} milliseconds.`
-        );
-    }
+  if (debug) {
+    console.log(
+      `\nAdd to index took ${performance.now() - start} milliseconds.`
+    );
+  }
 }
 
 /**
@@ -162,67 +173,21 @@ export function addToIndex(path, indexing, embedding, ID, debug) {
  * @param {number} ID - The ID to add
  * @param {boolean} debug - Whether to print debug information
  */
-export function addBulkToIndex(path, indexing, embeddings, IDs, debug) {
-    const start = performance.now();
+export function addBulkToIndex(indexingPath, indexing, embeddings, IDs, debug) {
+  const start = performance.now();
 
-    embeddings.forEach((embedding, index) => {
-        indexing.addPoint(embedding, IDs[index]);
-    });
-    indexing.writeIndexSync(path);
+  embeddings.forEach((embedding, index) => {
+    indexing.addPoint(embedding, IDs[index]);
+  });
+  indexing.writeIndexSync(indexingPath);
 
-    if (debug) {
-        console.log(
-            `\nAdd Bulk ${embeddings.length} to index took ${
-                performance.now() - start
-            } milliseconds.`
-        );
-    }
-}
-
-/**
- * Add the contentIDs & contentText to a static file
- *
- * @param {string} path - The path to save the indexing.
- * @param {array} newContentIDs - The array of objects to add
- * @param {boolean} debug - Whether to print debug information
- */
-export async function addBulkToContentsIndex(path, newContentIDs, debug) {
-    try {
-        const start = performance.now();
-        let contentMap = new Map();
-
-        if (await checkFileExists(path)) {
-            const existingData = await fs.readFile(path, 'utf-8');
-            const existingMap = new Map(JSON.parse(existingData));
-            newContentIDs.forEach(([key, value]) =>
-                existingMap.set(key, value)
-            );
-            contentMap = existingMap;
-            console.log('Successfully updated Map.');
-        } else {
-            newContentIDs.forEach(([key, value]) => {
-                console.log(key);
-                console.log(value);
-                contentMap.set(key, value);
-            });
-            console.log('Successfully created Map.');
-        }
-
-        await fs.writeFile(
-            path,
-            JSON.stringify(Array.from(contentMap.entries()), null, 2)
-        );
-
-        if (debug) {
-            console.log(
-                `\nAdd Bulk ${newContentIDs.length} to contentIDs file took ${
-                    performance.now() - start
-                } milliseconds.`
-            );
-        }
-    } catch (error) {
-        console.log('Error:', error);
-    }
+  if (debug) {
+    console.log(
+      `\nAdd Bulk ${embeddings.length} to index took ${
+        performance.now() - start
+      } milliseconds.`
+    );
+  }
 }
 
 /**
@@ -235,177 +200,204 @@ export async function addBulkToContentsIndex(path, newContentIDs, debug) {
  * @returns - The indexing
  */
 export async function loadIndexFromFile(
-    path,
-    numDimensions,
-    maxElements,
-    debug = false
+  path,
+  numDimensions,
+  maxElements,
+  debug = false
 ) {
-    const start = performance.now();
+  const start = performance.now();
 
-    // Load index data from file
-    const indexing = new HierarchicalNSW('cosine', numDimensions);
-    indexing.readIndexSync(path, true);
-    indexing.resizeIndex(maxElements);
-    if (debug) {
-        console.log(
-            `\nLoading Index took ${performance.now() - start} milliseconds.`
-        );
-    }
+  // Load index data from file
+  const indexing = new HierarchicalNSW("cosine", numDimensions);
+  indexing.readIndexSync(path, true);
+  indexing.resizeIndex(maxElements);
+  if (debug) {
+    console.log(
+      `\nLoading Index took ${performance.now() - start} milliseconds.`
+    );
+  }
 
-    return indexing;
+  return indexing;
 }
 
 /**
  * Delete the Embeddings to the indexing.
  *
- * @param {string} path - The path to the indexing being deleted from
+ * @param {string} indexingPath - The path to the indexing being deleted from
  * @param {Object} indexing - The indexing to delete from
- * @param {number} ID - The ID to search for and delete
  * @param {string} text - The text to search for and delete
  * @param {boolean} debug - Whether to print debug information
  */
-export function deleteFromIndex(path, indexing, ID, text, debug) {
-    const start = performance.now();
-    try {
-        if (text) {
-            const pathToReferenceTable = './data/contentsMap.json';
-            const returnID = convertTextToID(text, pathToReferenceTable);
-
-            // Check if the ID is valid before using it for deletion
-            if (returnID) {
-                ID = returnID;
-            }
-        }
-        indexing.markDelete(ID);
-        indexing.writeIndexSync(path);
-        console.log('Embedding Deleted');
-    } catch (e) {
-        console.log(e);
+export async function deleteFromIndex(indexingPath, text, debug) {
+  const start = performance.now();
+  try {
+    // Load the existing index
+    const indexing = await loadIndexFromFile(
+      indexingPath,
+      numDimensions,
+      maxElements,
+      debug
+    );
+    const { qnaId = undefined } = await QnAModel.delete(text);
+    if (qnaId) {
+      indexing.markDelete(qnaId);
+      indexing.writeIndexSync(indexingPath);
     }
+    console.log("Embedding Deleted");
+  } catch (e) {
+    console.log(e);
+  }
 
-    if (debug) {
-        console.log(
-            `\nDelete from index took ${
-                performance.now() - start
-            } milliseconds.`
-        );
-    }
+  if (debug) {
+    console.log(
+      `\nDelete from index took ${performance.now() - start} milliseconds.`
+    );
+  }
 }
 
-async function convertTextToID(text, mapPath) {
-    const existingData = await fs.readFile(mapPath, 'utf-8');
-    const map = new Map(JSON.parse(existingData));
-
-    // Find Key by Value
-    for (let [key, val] of map.entries()) {
-        if (val.pageContent === text) {
-            return key;
-        }
-    }
-    console.log('No ID associated with the input text');
-    return null;
-}
-
-/**
- * Create an ID for each page.
- *
- * @param {number} index - The index of the page
- * @param {number} fillerID - The filler ID
- * @returns - The ID
- */
-export function createID(counterID, fillerID) {
-    const id = counterID * 100 + fillerID;
-    return id;
-}
-
-/**
- * Get the filler ID from the ID.
- *
- * @param {number} id - The ID
- * @returns - The filler ID
- */
-export function getFillerID(id) {
-    return id % 100;
-}
-
-/**
- * Get the counter ID from the ID.
- *
- * @param {number} id - The ID
- * @returns - The counter ID
- */
-export function getCounterID(id) {
-    return Math.floor(id / 100);
-}
-
-/**
- * Add the Bulks Embeddings to the indexing.
- *
- * @param {Object} model - The model to use for the conversion
- * @param {string} indexingPath - The path to load the indexing from or save a new one to.
- * @param {Object} indexing - The indexing to add the point to
- * @param {Array} contents - The array of extracted pageContent values
- * @param {Array} fillersIDs - The array of extracted fillerIDs values
- * @param {string} debug - Whether to print debug information
- */
 export async function addEmbeddings(
-    model,
+  model,
+  dataProcessingPath,
+  dataProcessedPath,
+  indexingPath,
+  orgId,
+  debug
+) {
+  // Read all the files in the directory and return the content and move the files to the processed folder.
+  const extractionResult = await extractPageContentAndMetadata(
     dataProcessingPath,
     dataProcessedPath,
-    indexingPath,
-    indexing,
-    DEBUG,
-    contentsMapPath
-) {
-    // Read all the files in the directory and return the content and move the files to the processed folder.
-    const extractionResult = await extractPageContentAndMetadata(
-        dataProcessingPath,
-        dataProcessedPath,
-        'json',
-        DEBUG
-    );
+    "json",
+    debug
+  );
 
-    // Extract valid values and assign empty if not valid
-    const { fillersIDs = [], contents = [] } = extractionResult || {};
+  // Extract valid values and assign empty if not valid
+  const { fillersIDs = [], contents = [] } = extractionResult || {};
 
-    // Get the current count
-    let counterID = indexing.getCurrentCount();
+  // Get the current count
+  console.log("Total Text:", contents.length);
+  // if there is any content, add it to the indexing
+  if (contents.length) {
+    const start = performance.now();
+    const newIDs = [];
+    // Convert the text to an embedding.
+    const embeddings = await convertToEmbedding(model, contents, debug);
 
-    console.log('Total Text:', contents.length);
-    // if there is any content, add it to the indexing
-    if (contents.length) {
-        const start = performance.now();
-        const newContentIDs = [];
-        const newIDs = [];
-
-        // Convert the text to an embedding.
-        const embeddings = await convertToEmbedding(model, contents, DEBUG);
-
-        // Add the embedding to the indexing and append to the contentsMap
-        for (let i = 0; i < fillersIDs.length; i++) {
-            counterID += 1;
-            const ID = createID(counterID, fillersIDs[i]);
-            newContentIDs.push([
-                ID,
-                {
-                    counterID,
-                    fillerID: fillersIDs[i],
-                    pageContent: contents[i],
-                },
-            ]);
-            newIDs.push(ID);
-        }
-        console.log(newIDs);
-
-        await addBulkToContentsIndex(contentsMapPath, newContentIDs, DEBUG);
-        addBulkToIndex(indexingPath, indexing, embeddings, newIDs, DEBUG);
-
-        if (DEBUG) {
-            console.log(
-                `\nIndexing took ${
-                    performance.now() - start
-                } milliseconds. shape ${embeddings.length}`
-            );
-        }
+    for (let i = 0; i < fillersIDs.length; i++) {
+      const ID = await QnAModel.insert(
+        orgId,
+        contents[i],
+        fillerMap.get(fillersIDs[i])
+      );
+      newIDs.push(ID);
     }
+    console.log(newIDs);
+
+    // Check if the indexing exists
+    const is_existing_index = await checkFileExists(indexingPath);
+    let indexing;
+    // Load the existing index of create a new one
+    if (is_existing_index) {
+      console.log(`${indexingPath} Static Index File Exists - Loading File`);
+      // Load the existing index
+      indexing = await loadIndexFromFile(
+        indexingPath,
+        numDimensions,
+        maxElements,
+        debug
+      );
+    } else {
+      console.log(`${indexingPath} No Index File - Building From Scratch`);
+      // Build the new indexing
+      indexing = await buildIndexing(
+        indexingPath,
+        numDimensions,
+        maxElements,
+        debug
+      );
+    }
+
+    addBulkToIndex(indexingPath, indexing, embeddings, newIDs, debug);
+
+    if (debug) {
+      console.log(
+        `\nIndexing took ${performance.now() - start} milliseconds. shape ${
+          embeddings.length
+        }`
+      );
+    }
+  }
+}
+
+export async function addEmbeddingsFromJSON(
+  model,
+  indexingPath,
+  orgId,
+  jsonData,
+  debug
+) {
+  const fillersIDs = [],
+    contents = [];
+
+  jsonData.forEach((entry) => {
+    contents.push(entry.pageContent);
+    fillersIDs.push(entry.metadata.fillerID);
+  });
+
+  // Get the current count
+  console.log("Total Text:", contents.length);
+  // if there is any content, add it to the indexing
+  if (contents.length) {
+    const start = performance.now();
+    const newIDs = [];
+    const numDimensions = 512; // the length of data point vector that will be indexed.
+    const maxElements = 100000; // the maximum number of data points.
+
+    // Convert the text to an embedding.
+    const embeddings = await convertToEmbedding(model, contents, debug);
+
+    for (let i = 0; i < fillersIDs.length; i++) {
+      const ID = await QnAModel.insert(
+        orgId,
+        contents[i],
+        fillerMap.get(fillersIDs[i])
+      );
+      newIDs.push(ID);
+    }
+    console.log(newIDs);
+
+    // Check if the indexing exists
+    const is_existing_index = await checkFileExists(indexingPath);
+    let indexing;
+    // Load the existing index of create a new one
+    if (is_existing_index) {
+      console.log(`${indexingPath} Static Index File Exists - Loading File`);
+      // Load the existing index
+      indexing = await loadIndexFromFile(
+        indexingPath,
+        numDimensions,
+        maxElements,
+        debug
+      );
+    } else {
+      console.log(`${indexingPath} No Index File - Building From Scratch`);
+      // Build the new indexing
+      indexing = await buildIndexing(
+        indexingPath,
+        numDimensions,
+        maxElements,
+        debug
+      );
+    }
+
+    addBulkToIndex(indexingPath, indexing, embeddings, newIDs, debug);
+
+    if (debug) {
+      console.log(
+        `\nIndexing took ${performance.now() - start} milliseconds. shape ${
+          embeddings.length
+        }`
+      );
+    }
+  }
 }
