@@ -2,9 +2,8 @@ import pkg from 'hnswlib-node'; // Import the HNSW library
 const { HierarchicalNSW } = pkg;
 import fillerMap from './fillerMap.js';
 import { convertToEmbedding } from './embedding.js';
-import { checkFileExists } from './ingestion.js';
+import { checkFileExists, extractPageContentAndMetadata } from './ingestion.js';
 import fs from 'fs/promises';
-import { extractPageContentAndMetadata } from './ingestion.js';
 
 /**
  * Search the sentence in the indexing and return the nearest neighbors.
@@ -93,13 +92,13 @@ export async function returnMatchedFiller(
 
 export function getContentByKey(arr, key) {
     // Loop through each array element
-    for (let i = 0; i < arr.length; i++) {
+    for (const element of arr) {
         // Check if the key of the current element matches the given key
-        if (arr[i][0] === key) {
+        if (element[0] === key) {
             // If a match is found, return the 'fillerID' and 'pageContent'
             return {
-                fillerID: arr[i][1].fillerID,
-                pageContent: arr[i][1].pageContent,
+                fillerID: element[1].fillerID,
+                pageContent: element[1].pageContent,
             };
         }
     }
