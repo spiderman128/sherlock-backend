@@ -28,9 +28,9 @@ const bucketName = 'airchat-persistent-vectorstorage';
 const NN = 1; // the number of nearest neighbors to search.
 let indexing, model, contentsMapPath;
 
-// ---------------------------------------------------------------------------- //
-// ** BULK ACTION **: EMBEDD FILES W/ SPECIFIC ORGID IN THE "to_process" FOLDER //
-// ---------------------------------------------------------------------------- //
+// ------------------------------------------------------------------------------------------- //
+// ** BULK ACTION **: EMBEDD FILES IN THE "to_process" FOLDER THAT PERTAIN TO A SPECIFIC ORGID //
+// ------------------------------------------------------------------------------------------- //
 // update embeddings
 app.post('/search/update', async (req, res) => {
     // Add any embeddings from the to_process folder
@@ -129,9 +129,9 @@ app.delete('/api/embeddings/:param', async (req, res) => {
     );
 });
 
-// ----------------------------------------------------------------------------- //
-// ** BULK ACTION **: SAVE EMBEDDINGS FROM THE VECTOR STORE UPON SERVER SHUTDOWN //
-// ----------------------------------------------------------------------------- //
+// ----------------------------------------------------------------- //
+// ** BULK ACTION **: MANUALLY SAVE EMBEDDINGS FROM THE VECTOR STORE //
+// ----------------------------------------------------------------- //
 app.post('/api/save', async (req, res) => {
     try {
         console.log('SAVE DATA TO S3 BUCKET');
