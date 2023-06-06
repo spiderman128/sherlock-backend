@@ -110,7 +110,7 @@ app.post("/api/json", async (req, res) => {
   // );
 
   res.send({
-    message: `Embeddings added to ${indexingPath}`,
+    message: `Embeddings added`,
   });
 });
 

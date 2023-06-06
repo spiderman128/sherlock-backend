@@ -29,7 +29,7 @@ export default class QnAModel {
 
   static #deleteQuery = `
         DELETE FROM qna_table
-            WHERE question = $question`;
+            WHERE qnaId = $qnaId`;
 
   static async insert(orgId, question, answer, debug = false) {
     const prepareData = [orgId, question, answer];
@@ -53,10 +53,11 @@ export default class QnAModel {
         { $question: question },
         debug
       );
+      console.log(qnaId, "Is deleted");
       await DBHelper.runQueryOnDB(
         "run",
         this.#deleteQuery,
-        { $question: question },
+        { $qnaId: qnaId },
         debug
       );
       return qnaId;

@@ -43,24 +43,10 @@ Content-Type: application/json
 "orgId":20,
 "question": "Where is my food?",
 "answer": "Your food is in the kitchen."
-}]
-
-###
-POST http://localhost:3000/api/json
-Content-Type: application/json
-
-[{
-"orgId":20,
-"question": "Where is my order?",
-"answer": "Your food is on the way. It will be delivered by 5pm today."
 },{
 "orgId":20,
-"question": "Where is key?",
-"answer": "your key is in bedroom."
-},{
-"orgId":21,
-"question": "Where is my food?",
-"answer": "Your food is in the kitchen."
+"question": "Where is my Key?",
+"answer": "Your food is in the bedroom."
 }]
 
 ###
@@ -89,5 +75,5 @@ Content-Type: application/json
 
 {
     "orgId":20,
-    "sentence":"getting that. So you can email"
+    "sentence":"Where is key?"
 }
