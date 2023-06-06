@@ -214,9 +214,9 @@ const server = app.listen(port, async () => {
     // LOAD EMBEDDINGS FROM THE ClOUD VECTOR STORE UPON SERVER STARTUP //
     // --------------------------------------------------------------- //
     console.log('LOAD DATA FROM S3 BUCKET');
-    await loadDataFromS3(s3, bucketName, 'to_process', './data/to_process');
-    await loadDataFromS3(s3, bucketName, 'processed', './data/processed');
-    await loadDataFromS3(s3, bucketName, 'indexing', './data/indexing');
+    // await loadDataFromS3(s3, bucketName, 'to_process', './data/to_process');
+    // await loadDataFromS3(s3, bucketName, 'processed', './data/processed');
+    // await loadDataFromS3(s3, bucketName, 'indexing', './data/indexing');
     console.log('\n\nLOADED DATA FROM S3 + REMOVED UNRECOGNIZED LOCAL DATA\n');
 
     // ------------------------------------------------------------- //
@@ -237,9 +237,9 @@ const server = app.listen(port, async () => {
         DEBUG
     );
 
-    await saveDataToS3(s3, bucketName, './data/to_process', 'to_process');
-    await saveDataToS3(s3, bucketName, './data/processed', 'processed');
-    await saveDataToS3(s3, bucketName, './data/indexing', 'indexing');
+    // await saveDataToS3(s3, bucketName, './data/to_process', 'to_process');
+    // await saveDataToS3(s3, bucketName, './data/processed', 'processed');
+    // await saveDataToS3(s3, bucketName, './data/indexing', 'indexing');
 
     console.log(
         `\n----------\nSERVER READY:\n----------\nServer listening on port ${port}\n`
@@ -254,9 +254,9 @@ process.on('SIGINT', async () => {
     console.log('\nProcess is about to exit. Saving data to S3...');
     InitDatabase.close();
 
-    await saveDataToS3(s3, bucketName, './data/to_process', 'to_process');
-    await saveDataToS3(s3, bucketName, './data/processed', 'processed');
-    await saveDataToS3(s3, bucketName, './data/indexing', 'indexing');
+    // await saveDataToS3(s3, bucketName, './data/to_process', 'to_process');
+    // await saveDataToS3(s3, bucketName, './data/processed', 'processed');
+    // await saveDataToS3(s3, bucketName, './data/indexing', 'indexing');
 
     console.log('\nData saved to S3. Shutting down...');
 
