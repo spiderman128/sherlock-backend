@@ -86,8 +86,7 @@ app.post("/api/embed", async (req, res) => {
 
 app.post("/api/json", async (req, res) => {
   // Grab the parameters
-  const { jsonData, orgId = defaultIndexing } = req.body;
-  const indexingPath = path.join(indexingBasePath, orgId + ".hnsw");
+  const { jsonData } = req.body;
 
   if (!jsonData) {
     res.status(400).send({ error: "Missing jsonData parameter" });
@@ -95,7 +94,13 @@ app.post("/api/json", async (req, res) => {
   }
 
   // Add any embeddings grabbed from the to_process folder earlier
-  await addEmbeddingsFromJSON(model, indexingPath, orgId, jsonData, DEBUG);
+  await addEmbeddingsFromJSON(
+    model,
+    indexingBasePath,
+    defaultIndexing,
+    jsonData,
+    DEBUG
+  );
 
   await saveDataToS3(s3, bucketName, "./data/indexing", "indexing").catch(
     (err) => {

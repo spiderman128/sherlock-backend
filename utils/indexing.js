@@ -1,6 +1,7 @@
 import pkg from "hnswlib-node"; // Import the HNSW library
 const { HierarchicalNSW } = pkg;
 import fillerMap from "./fillerMap.js";
+import path from "path";
 import { convertToEmbedding } from "./embedding.js";
 import { checkFileExists, extractPageContentAndMetadata } from "./ingestion.js";
 import QnAModel from "../models/qna.model.js";
@@ -345,75 +346,87 @@ export async function addEmbeddings(
   }
 }
 
+export function groupBy(key) {
+  return (array) =>
+    array.reduce((objectsByKeyValue, obj) => {
+      const value = obj[key];
+      delete obj[key]; // delete that key.
+      objectsByKeyValue[value] = (objectsByKeyValue[value] || []).concat(obj);
+      return objectsByKeyValue;
+    }, {});
+}
+
 export async function addEmbeddingsFromJSON(
   model,
-  indexingPath,
-  orgId,
+  indexingBasePath,
+  defaultIndexing,
   jsonData,
   debug
 ) {
-  const fillersIDs = [],
-    contents = [];
+  const orgIdGroupBy = groupBy("orgId");
+  const orgIdGroup = orgIdGroupBy(jsonData);
 
-  jsonData.forEach((entry) => {
-    contents.push(entry.pageContent);
-    fillersIDs.push(entry.metadata.fillerID);
-  });
+  for (const [orgId, data] of Object.entries(orgIdGroup)) {
+    const question = [],
+      answer = [];
+    data.forEach((entry) => {
+      question.push(entry.question);
+      answer.push(entry.answer);
+    });
+    console.log("Total Text:", question.length);
+    // if there is any content, add it to the indexing
+    if (question.length) {
+      const start = performance.now();
+      const newIDs = [];
+      const numDimensions = 512; // the length of data point vector that will be indexed.
+      const maxElements = 100000; // the maximum number of data points.
 
-  // Get the current count
-  console.log("Total Text:", contents.length);
-  // if there is any content, add it to the indexing
-  if (contents.length) {
-    const start = performance.now();
-    const newIDs = [];
-    const numDimensions = 512; // the length of data point vector that will be indexed.
-    const maxElements = 100000; // the maximum number of data points.
+      // Convert the text to an embedding.
+      const embeddings = await convertToEmbedding(model, question, debug);
 
-    // Convert the text to an embedding.
-    const embeddings = await convertToEmbedding(model, contents, debug);
+      for (let i = 0; i < orgIds.length; i++) {
+        const ID = await QnAModel.insert(orgId, question[i], answer[i]);
+        newIDs.push(ID);
+      }
+      console.log(newIDs);
+      const id = orgId || defaultIndexing;
+      const indexingPath = path.join(indexingBasePath, id + ".hnsw");
 
-    for (let i = 0; i < fillersIDs.length; i++) {
-      const ID = await QnAModel.insert(
-        orgId,
-        contents[i],
-        fillerMap.get(fillersIDs[i])
-      );
-      newIDs.push(ID);
-    }
-    console.log(newIDs);
+      // Check if the indexing exists
+      const is_existing_index = await checkFileExists(indexingPath);
+      let indexing;
+      // Load the existing index of create a new one
+      if (is_existing_index) {
+        console.log(`${indexingPath} Static Index File Exists - Loading File`);
+        // Load the existing index
+        indexing = await loadIndexFromFile(
+          indexingPath,
+          numDimensions,
+          maxElements,
+          debug
+        );
+      } else {
+        console.log(`${indexingPath} No Index File - Building From Scratch`);
+        // Build the new indexing
+        indexing = await buildIndexing(
+          indexingPath,
+          numDimensions,
+          maxElements,
+          debug
+        );
+      }
 
-    // Check if the indexing exists
-    const is_existing_index = await checkFileExists(indexingPath);
-    let indexing;
-    // Load the existing index of create a new one
-    if (is_existing_index) {
-      console.log(`${indexingPath} Static Index File Exists - Loading File`);
-      // Load the existing index
-      indexing = await loadIndexFromFile(
-        indexingPath,
-        numDimensions,
-        maxElements,
-        debug
-      );
-    } else {
-      console.log(`${indexingPath} No Index File - Building From Scratch`);
-      // Build the new indexing
-      indexing = await buildIndexing(
-        indexingPath,
-        numDimensions,
-        maxElements,
-        debug
-      );
-    }
+      addBulkToIndex(indexingPath, indexing, embeddings, newIDs, debug);
 
-    addBulkToIndex(indexingPath, indexing, embeddings, newIDs, debug);
-
-    if (debug) {
-      console.log(
-        `\nIndexing took ${performance.now() - start} milliseconds. shape ${
-          embeddings.length
-        }`
-      );
+      if (debug) {
+        console.log(
+          `\nIndexing took ${performance.now() - start} milliseconds. shape ${
+            embeddings.length
+          }`
+        );
+      }
     }
   }
+
+  // Get the current count
 }
