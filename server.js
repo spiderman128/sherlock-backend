@@ -88,12 +88,6 @@ app.post("/api/json", async (req, res) => {
   // Grab the parameters
   const { jsonData, orgId = defaultIndexing } = req.body;
   const indexingPath = path.join(indexingBasePath, orgId + ".hnsw");
-  const is_existing_index = await checkFileExists(indexingPath);
-
-  if (!is_existing_index) {
-    res.status(400).send({ error: "Indexing does not exist" });
-    return;
-  }
 
   if (!jsonData) {
     res.status(400).send({ error: "Missing jsonData parameter" });
