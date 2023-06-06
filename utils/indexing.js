@@ -384,7 +384,7 @@ export async function addEmbeddingsFromJSON(
       // Convert the text to an embedding.
       const embeddings = await convertToEmbedding(model, question, debug);
 
-      for (let i = 0; i < orgIds.length; i++) {
+      for (let i = 0; i < question.length; i++) {
         const ID = await QnAModel.insert(orgId, question[i], answer[i]);
         newIDs.push(ID);
       }

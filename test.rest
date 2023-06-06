@@ -37,12 +37,12 @@ Content-Type: application/json
 "answer": "Your food is on the way. It will be delivered by 5pm today."
 },{
 "orgId":20,
-"question": "Where is my order?",
-"answer": "Your food is on the way. It will be delivered by 5pm today."
+"question": "Where is job?",
+"answer": "your job is waiting for you."
 },{
 "orgId":20,
-"question": "Where is my order?",
-"answer": "Your food is on the way. It will be delivered by 5pm today."
+"question": "Where is my food?",
+"answer": "Your food is in the kitchen."
 }]
 
 ###
@@ -54,20 +54,20 @@ Content-Type: application/json
 "question": "Where is my order?",
 "answer": "Your food is on the way. It will be delivered by 5pm today."
 },{
-"orgId":21,
-"question": "Where is my order?",
-"answer": "Your food is on the way. It will be delivered by 5pm today."
-},{
 "orgId":20,
-"question": "Where is my order?",
-"answer": "Your food is on the way. It will be delivered by 5pm today."
+"question": "Where is key?",
+"answer": "your key is in bedroom."
+},{
+"orgId":21,
+"question": "Where is my food?",
+"answer": "Your food is in the kitchen."
 }]
 
 ###
 DELETE http://localhost:3000/api/delete/Okay.
 
 ###
-DELETE http://localhost:3000/api/delete/Okay.
+DELETE http://localhost:3000/api/delete/Where is key?
 Content-Type: application/json
 
 {
@@ -79,7 +79,7 @@ GET http://localhost:3000/api/match
 Content-Type: application/json
 
 {
-    "sentence":"getting that. So you can email"
+    "sentence":"Where is key?"
 }
 
 
