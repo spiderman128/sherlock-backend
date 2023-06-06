@@ -49,15 +49,14 @@ Content-Type: application/json
 "answer": "Your food is in the bedroom."
 }]
 
-###
-DELETE http://localhost:3000/api/delete/Okay.
 
 ###
-DELETE http://localhost:3000/api/delete/Where is key?
+DELETE http://localhost:3000/api/delete
 Content-Type: application/json
 
 {
-    "orgId":20
+    "orgId":20,
+    "question":"Where is my Key?"
 }
 
 ###
@@ -65,7 +64,7 @@ GET http://localhost:3000/api/match
 Content-Type: application/json
 
 {
-    "sentence":"Where is key?"
+    "sentence":"Where is my key?"
 }
 
 
@@ -75,5 +74,5 @@ Content-Type: application/json
 
 {
     "orgId":20,
-    "sentence":"Where is key?"
+    "sentence":"Where is my Key?"
 }

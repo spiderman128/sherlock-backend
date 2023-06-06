@@ -151,8 +151,8 @@ app.get("/api/match", async (req, res) => {
 // ** SINGLE OBJ ACTION **: DELETE EMBEDDINGS FROM SPECIFIC ORGID VECTOR STORE //
 // --------------------------------------------------------------------------- //
 // Delete Embedding
-app.delete("/api/delete/:question", async (req, res) => {
-  const textToDelete = req.params.question;
+app.delete("/api/delete", async (req, res) => {
+  const textToDelete = req.body.question;
   const orgId = req.body.orgId || defaultIndexing;
   const indexingPath = path.join(indexingBasePath, orgId + ".hnsw");
   const is_existing_index = await checkFileExists(indexingPath);
