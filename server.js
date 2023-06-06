@@ -63,14 +63,9 @@ app.post("/api/embed", async (req, res) => {
   // Grab the parameters
   const { question, orgId = defaultIndexing, answer } = req.body;
   const indexingPath = path.join(indexingBasePath, orgId + ".hnsw");
-  const is_existing_index = await checkFileExists(indexingPath);
 
   if (!question || !answer) {
     res.status(400).send({ error: "Missing question or answer parameter" });
-    return;
-  }
-  if (!is_existing_index) {
-    res.status(400).send({ error: "Indexing does not exist" });
     return;
   }
 

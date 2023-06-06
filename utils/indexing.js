@@ -144,13 +144,29 @@ export async function addToIndex(
   debug
 ) {
   const start = performance.now();
-
-  const indexing = await loadIndexFromFile(
-    indexingPath,
-    numDimensions,
-    maxElements,
-    debug
-  );
+  // Check if the indexing exists
+  const is_existing_index = await checkFileExists(indexingPath);
+  let indexing;
+  // Load the existing index of create a new one
+  if (is_existing_index) {
+    console.log(`${indexingPath} Static Index File Exists - Loading File`);
+    // Load the existing index
+    indexing = await loadIndexFromFile(
+      indexingPath,
+      numDimensions,
+      maxElements,
+      debug
+    );
+  } else {
+    console.log(`${indexingPath} No Index File - Building From Scratch`);
+    // Build the new indexing
+    indexing = await buildIndexing(
+      indexingPath,
+      numDimensions,
+      maxElements,
+      debug
+    );
+  }
   // Convert the text to an embedding.
   const embedding = await convertToEmbedding(model, question, debug);
   const ID = await QnAModel.insert(orgId, question, answer);
