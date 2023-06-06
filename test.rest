@@ -31,49 +31,32 @@ Content-Type: application/json
 POST http://localhost:3000/api/json
 Content-Type: application/json
 
-{
-   "jsonData":[{
-            "orgId":20,
-            "question": "Where is my order?",
-            "answer": "Your food is on the way. It will be delivered by 5pm today."
-        },{
-            "orgId":20,
-            "question": "Where is my order?",
-            "answer": "Your food is on the way. It will be delivered by 5pm today."
-        },{
-            "orgId":20,
-            "question": "Where is my order?",
-            "answer": "Your food is on the way. It will be delivered by 5pm today."
-        }]
-}
+[{
+"orgId":21,
+"question": "Where is my order?",
+"answer": "Your food is on the way. It will be delivered by 5pm today."
+},{
+"orgId":20,
+"question": "Where is job?",
+"answer": "your job is waiting for you."
+},{
+"orgId":20,
+"question": "Where is my food?",
+"answer": "Your food is in the kitchen."
+},{
+"orgId":20,
+"question": "Where is my Key?",
+"answer": "Your food is in the bedroom."
+}]
+
 
 ###
-POST http://localhost:3000/api/json
+DELETE http://localhost:3000/api/delete
 Content-Type: application/json
 
 {
-   "orgId":20,
-   "jsonData":[{
-            "question": "Where is my order?",
-            "answer": "Your food is on the way. It will be delivered by 5pm today."
-        },{
-            "question": "Where is my order?",
-            "answer": "Your food is on the way. It will be delivered by 5pm today."
-        },{
-            "question": "Where is my order?",
-            "answer": "Your food is on the way. It will be delivered by 5pm today."
-        }]
-}
-
-###
-DELETE http://localhost:3000/api/delete/Okay.
-
-###
-DELETE http://localhost:3000/api/delete/What is the status of my order?
-Content-Type: application/json
-
-{
-    "orgId":20
+    "orgId":20,
+    "question":"Where is my Key?"
 }
 
 ###
@@ -81,7 +64,7 @@ GET http://localhost:3000/api/match
 Content-Type: application/json
 
 {
-    "sentence":"getting that. So you can email"
+    "sentence":"Where is my key?"
 }
 
 
@@ -91,5 +74,5 @@ Content-Type: application/json
 
 {
     "orgId":20,
-    "sentence":"getting that. So you can email"
+    "sentence":"Where is my Key?"
 }
