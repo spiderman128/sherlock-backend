@@ -6,7 +6,7 @@
     "type": "module",
     "license": "MIT",
     "scripts": {
-        "preinstall": "#apt-get update && apt-get install -y build-essential python3",
+        "preinstall": "apt-get update && apt-get install -y build-essential python3",
         "start": "node -r dotenv/config server.js"
     },
     "dependencies": {
