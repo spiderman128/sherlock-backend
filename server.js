@@ -1,11 +1,11 @@
 import { checkFileExists } from './utils/ingestion.js';
 import { loadModel } from './utils/embedding.js';
 import {
-  addEmbeddings,
-  addToIndex,
-  addEmbeddingsFromJSON,
-  returnMatchedFiller,
-  deleteFromIndex,
+    addEmbeddings,
+    addToIndex,
+    addEmbeddingsFromJSON,
+    returnMatchedFiller,
+    deleteFromIndex,
 } from './utils/indexing.js';
 import express from 'express';
 import path from 'path';
@@ -35,83 +35,94 @@ let model;
 // ------------------------------------------------------------------------------------------- //
 // update embeddings
 app.post('/search/update', async (req, res) => {
-  const orgId = req.body.orgId || defaultIndexing;
-  const indexingPath = path.join(indexingBasePath, orgId + '.hnsw');
-  // Add any embeddings from the to_process folder
-  await addEmbeddings(
-    model,
-    dataProcessingPath,
-    dataProcessedPath,
-    indexingPath,
-    orgId,
-    DEBUG
-  );
+    // Check to make sure orgId is present
+    if (!req.body.orgId) {
+        res.status(400).send({ error: 'Missing orgId parameter' });
+        return;
+    }
 
-  await saveDataToS3(s3, bucketName, './data/to_process', 'to_process');
-  await saveDataToS3(s3, bucketName, './data/processed', 'processed');
-  await saveDataToS3(s3, bucketName, './data/indexing', 'indexing');
+    const orgId = req.body.orgId;
+    const indexingPath = path.join(indexingBasePath, orgId + '.hnsw');
+    // Add any embeddings from the to_process folder
+    await addEmbeddings(
+        model,
+        dataProcessingPath,
+        dataProcessedPath,
+        indexingPath,
+        orgId,
+        DEBUG
+    );
 
-  res.json({
-    message: `${indexingPath} Embeddings Updated`,
-  });
+    await saveDataToS3(s3, bucketName, './data/to_process', 'to_process');
+    await saveDataToS3(s3, bucketName, './data/processed', 'processed');
+    await saveDataToS3(s3, bucketName, './data/indexing', 'indexing');
+
+    res.json({
+        message: `${indexingPath} Embeddings Updated`,
+    });
 });
 
 // --------------------------------------------------------------------- //
 // ** SINGLE OBJ ACTION **: ADD EMBEDDING TO SPECIFIC ORGID VECTOR STORE //
 // --------------------------------------------------------------------- //
 app.post('/api/embed', async (req, res) => {
-  // Grab the parameters
-  const { question, orgId = defaultIndexing, answer } = req.body;
-  const indexingPath = path.join(indexingBasePath, orgId + '.hnsw');
-
-  if (!question || !answer) {
-    res.status(400).send({ error: 'Missing question or answer parameter' });
-    return;
-  }
-
-  // Add the embedding to the indexing
-  await addToIndex(indexingPath, model, orgId, question, answer, DEBUG);
-
-  await saveDataToS3(s3, bucketName, './data/indexing', 'indexing').catch(
-    (err) => {
-      // Do some logging here or handle error
-      console.error(`Error saving data to S3: ${err}`);
+    // Check to make sure orgId is present
+    if (!req.body.orgId) {
+        res.status(400).send({ error: 'Missing orgId parameter' });
+        return;
     }
-  );
+    // Grab the parameters
+    const { question, orgId = defaultIndexing, answer } = req.body;
+    const indexingPath = path.join(indexingBasePath, orgId + '.hnsw');
 
-  res.send({
-    message: `Embedding with text '${question}' added to ${indexingPath}`,
-  });
+    if (!question || !answer) {
+        res.status(400).send({ error: 'Missing question or answer parameter' });
+        return;
+    }
+
+    // Add the embedding to the indexing
+    await addToIndex(indexingPath, model, orgId, question, answer, DEBUG);
+
+    await saveDataToS3(s3, bucketName, './data/indexing', 'indexing').catch(
+        (err) => {
+            // Do some logging here or handle error
+            console.error(`Error saving data to S3: ${err}`);
+        }
+    );
+
+    res.send({
+        message: `Embedding with text '${question}' added to ${indexingPath}`,
+    });
 });
 
 app.post('/api/json', async (req, res) => {
-  // Grab the parameters
-  const jsonData = req.body;
+    // Grab the parameters
+    const jsonData = req.body;
 
-  if (!jsonData) {
-    res.status(400).send({ error: 'Missing jsonData parameter' });
-    return;
-  }
-
-  // Add any embeddings grabbed from the to_process folder earlier
-  await addEmbeddingsFromJSON(
-    model,
-    indexingBasePath,
-    defaultIndexing,
-    jsonData,
-    DEBUG
-  );
-
-  await saveDataToS3(s3, bucketName, './data/indexing', 'indexing').catch(
-    (err) => {
-      // Do some logging here or handle error
-      console.error(`Error saving data to S3: ${err}`);
+    if (!jsonData) {
+        res.status(400).send({ error: 'Missing jsonData parameter' });
+        return;
     }
-  );
 
-  res.send({
-    message: `Embeddings added`,
-  });
+    // Add any embeddings grabbed from the to_process folder earlier
+    await addEmbeddingsFromJSON(
+        model,
+        indexingBasePath,
+        defaultIndexing,
+        jsonData,
+        DEBUG
+    );
+
+    await saveDataToS3(s3, bucketName, './data/indexing', 'indexing').catch(
+        (err) => {
+            // Do some logging here or handle error
+            console.error(`Error saving data to S3: ${err}`);
+        }
+    );
+
+    res.send({
+        message: `Embeddings added`,
+    });
 });
 
 // --------------------------------------------------------------------------------- //
@@ -119,32 +130,39 @@ app.post('/api/json', async (req, res) => {
 // --------------------------------------------------------------------------------- //
 // Get Matched Filler
 app.get('/api/match', async (req, res) => {
-  // Grab the parameters
-  const sentence = req.body.sentence;
-  const orgId = req.body.orgId || defaultIndexing;
-  const indexingPath = path.join(indexingBasePath, orgId + '.hnsw');
-  const nearestNeighbors = parseInt(req.body.neighbors) || NN;
-  const is_existing_index = await checkFileExists(indexingPath);
+    // Grab the parameters
+    const sentence = req.body.sentence;
 
-  if (!sentence) {
-    res.status(400).send({ error: 'Missing sentence parameter' });
-    return;
-  }
-  if (!is_existing_index) {
-    res.status(400).send({ error: 'Indexing does not exist' });
-    return;
-  }
+    // Check to make sure orgId is present
+    if (!req.body.orgId) {
+        res.status(400).send({ error: 'Missing orgId parameter' });
+        return;
+    }
+    const orgId = req.body.orgId;
 
-  const result = await returnMatchedFiller(
-    indexingPath,
-    model,
-    sentence,
-    nearestNeighbors,
-    DEBUG
-  );
-  res.send({
-    ...result,
-  });
+    const indexingPath = path.join(indexingBasePath, orgId + '.hnsw');
+    const nearestNeighbors = parseInt(req.body.neighbors) || NN;
+    const is_existing_index = await checkFileExists(indexingPath);
+
+    if (!sentence) {
+        res.status(400).send({ error: 'Missing sentence parameter' });
+        return;
+    }
+    if (!is_existing_index) {
+        res.status(400).send({ error: 'Indexing does not exist' });
+        return;
+    }
+
+    const result = await returnMatchedFiller(
+        indexingPath,
+        model,
+        sentence,
+        nearestNeighbors,
+        DEBUG
+    );
+    res.send({
+        ...result,
+    });
 });
 
 // --------------------------------------------------------------------------- //
@@ -152,54 +170,61 @@ app.get('/api/match', async (req, res) => {
 // --------------------------------------------------------------------------- //
 // Delete Embedding
 app.delete('/api/delete', async (req, res) => {
-  const textToDelete = req.body.question;
-  const orgId = req.body.orgId || defaultIndexing;
-  const indexingPath = path.join(indexingBasePath, orgId + '.hnsw');
-  const is_existing_index = await checkFileExists(indexingPath);
+    const textToDelete = req.body.question;
 
-  if (!textToDelete) {
-    res.status(400).send({ error: 'Missing  text parameter' });
-    return;
-  }
-
-  if (!is_existing_index) {
-    res.status(400).send({ error: 'Indexing does not exist' });
-    return;
-  }
-
-  await deleteFromIndex(indexingPath, textToDelete, DEBUG);
-
-  res.send({
-    success: `Embedding with text '${textToDelete}' deleted from ${indexingPath}`,
-  });
-
-  await saveDataToS3(s3, bucketName, './data/indexing', 'indexing').catch(
-    (err) => {
-      // Do some logging here or handle error
-      console.error(`Error saving data to S3: ${err}`);
+    // Check to make sure orgId is present
+    if (!req.body.orgId) {
+        res.status(400).send({ error: 'Missing orgId parameter' });
+        return;
     }
-  );
+    const orgId = req.body.orgId;
+
+    const indexingPath = path.join(indexingBasePath, orgId + '.hnsw');
+    const is_existing_index = await checkFileExists(indexingPath);
+
+    if (!textToDelete) {
+        res.status(400).send({ error: 'Missing  text parameter' });
+        return;
+    }
+
+    if (!is_existing_index) {
+        res.status(400).send({ error: 'Indexing does not exist' });
+        return;
+    }
+
+    await deleteFromIndex(indexingPath, textToDelete, DEBUG);
+
+    res.send({
+        success: `Embedding with text '${textToDelete}' deleted from ${indexingPath}`,
+    });
+
+    await saveDataToS3(s3, bucketName, './data/indexing', 'indexing').catch(
+        (err) => {
+            // Do some logging here or handle error
+            console.error(`Error saving data to S3: ${err}`);
+        }
+    );
 });
 
 // ----------------------------------------------------------------- //
 // ** BULK ACTION **: MANUALLY SAVE EMBEDDINGS FROM THE VECTOR STORE //
 // ----------------------------------------------------------------- //
 app.post('/api/save', async (req, res) => {
-  try {
-    console.log('SAVE DATA TO S3 BUCKET');
-    await saveDataToS3(s3, bucketName, './data/to_process', 'to_process');
-    await saveDataToS3(s3, bucketName, './data/processed', 'processed');
-    await saveDataToS3(s3, bucketName, './data/indexing', 'indexing');
-    res.json({
-      message: 'Data Saved to S3',
-    });
-  } catch (error) {
-    console.error('Failed to save data to S3:', error);
-    res.status(500).json({
-      message: 'Failed to save data to S3',
-      error: error.message,
-    });
-  }
+    try {
+        console.log('SAVE DATA TO S3 BUCKET');
+        await saveDataToS3(s3, bucketName, './data/to_process', 'to_process');
+        await saveDataToS3(s3, bucketName, './data/processed', 'processed');
+        await saveDataToS3(s3, bucketName, './data/indexing', 'indexing');
+        res.json({
+            message: 'Data Saved to S3',
+        });
+    } catch (error) {
+        console.error('Failed to save data to S3:', error);
+        res.status(500).json({
+            message: 'Failed to save data to S3',
+            error: error.message,
+        });
+    }
 });
 
 // ------------------ //
@@ -207,40 +232,40 @@ app.post('/api/save', async (req, res) => {
 // ------------------ //
 // Start the server
 const server = app.listen(port, async () => {
-  // --------------------------------------------------------------- //
-  // LOAD EMBEDDINGS FROM THE ClOUD VECTOR STORE UPON SERVER STARTUP //
-  // --------------------------------------------------------------- //
-  console.log('LOAD DATA FROM S3 BUCKET');
-  await loadDataFromS3(s3, bucketName, 'to_process', './data/to_process');
-  await loadDataFromS3(s3, bucketName, 'processed', './data/processed');
-  await loadDataFromS3(s3, bucketName, 'indexing', './data/indexing');
-  console.log('\n\nLOADED DATA FROM S3 + REMOVED UNRECOGNIZED LOCAL DATA\n');
+    // --------------------------------------------------------------- //
+    // LOAD EMBEDDINGS FROM THE ClOUD VECTOR STORE UPON SERVER STARTUP //
+    // --------------------------------------------------------------- //
+    console.log('LOAD DATA FROM S3 BUCKET');
+    await loadDataFromS3(s3, bucketName, 'to_process', './data/to_process');
+    await loadDataFromS3(s3, bucketName, 'processed', './data/processed');
+    await loadDataFromS3(s3, bucketName, 'indexing', './data/indexing');
+    console.log('\n\nLOADED DATA FROM S3 + REMOVED UNRECOGNIZED LOCAL DATA\n');
 
-  // ------------------------------------------------------------- //
-  // ACT ON THE LOCAL DATA THAT JUST GOT UPDATED BY loadDataFromS3 //
-  // ------------------------------------------------------------- //
+    // ------------------------------------------------------------- //
+    // ACT ON THE LOCAL DATA THAT JUST GOT UPDATED BY loadDataFromS3 //
+    // ------------------------------------------------------------- //
 
-  await InitDatabase.open(DBBasepath, DEBUG);
-  model = await loadModel(DEBUG);
-  const indexingPath = path.join(indexingBasePath, defaultIndexing + '.hnsw');
+    await InitDatabase.open(DBBasepath, DEBUG);
+    model = await loadModel(DEBUG);
+    const indexingPath = path.join(indexingBasePath, defaultIndexing + '.hnsw');
 
-  // Add any embeddings grabbed from the to_process folder earlier
-  await addEmbeddings(
-    model,
-    dataProcessingPath,
-    dataProcessedPath,
-    indexingPath,
-    defaultIndexing,
-    DEBUG
-  );
+    // Add any embeddings grabbed from the to_process folder earlier
+    await addEmbeddings(
+        model,
+        dataProcessingPath,
+        dataProcessedPath,
+        indexingPath,
+        defaultIndexing,
+        DEBUG
+    );
 
-  await saveDataToS3(s3, bucketName, './data/to_process', 'to_process');
-  await saveDataToS3(s3, bucketName, './data/processed', 'processed');
-  await saveDataToS3(s3, bucketName, './data/indexing', 'indexing');
+    await saveDataToS3(s3, bucketName, './data/to_process', 'to_process');
+    await saveDataToS3(s3, bucketName, './data/processed', 'processed');
+    await saveDataToS3(s3, bucketName, './data/indexing', 'indexing');
 
-  console.log(
-    `\n----------\nSERVER READY:\n----------\nServer listening on port ${port}\n`
-  );
+    console.log(
+        `\n----------\nSERVER READY:\n----------\nServer listening on port ${port}\n`
+    );
 });
 
 // ----------------------------------------------------------- //
@@ -248,16 +273,16 @@ const server = app.listen(port, async () => {
 // ----------------------------------------------------------- //
 
 process.on('SIGINT', async () => {
-  console.log('\nProcess is about to exit. Saving data to S3...');
-  InitDatabase.close();
+    console.log('\nProcess is about to exit. Saving data to S3...');
+    InitDatabase.close();
 
-  await saveDataToS3(s3, bucketName, './data/to_process', 'to_process');
-  await saveDataToS3(s3, bucketName, './data/processed', 'processed');
-  await saveDataToS3(s3, bucketName, './data/indexing', 'indexing');
+    await saveDataToS3(s3, bucketName, './data/to_process', 'to_process');
+    await saveDataToS3(s3, bucketName, './data/processed', 'processed');
+    await saveDataToS3(s3, bucketName, './data/indexing', 'indexing');
 
-  console.log('\nData saved to S3. Shutting down...');
+    console.log('\nData saved to S3. Shutting down...');
 
-  server.close(() => {
-    process.exit(0);
-  });
+    server.close(() => {
+        process.exit(0);
+    });
 });
