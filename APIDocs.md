@@ -20,5 +20,5 @@ purpose : Used to delete a question from the search index for a given indexName 
 
 endpoint : http://localhost:3000/api/match
 type : GET
-json : { "sentence": "Where is my order?" }
+json : { "sentence": "Where is my order?", indexName: 20}
 purpose : Used to get the best match for a given sentence and it's answer from the search index for a given indexName if indexName is not present it will update default search index.

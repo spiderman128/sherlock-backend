@@ -131,17 +131,16 @@ app.post('/api/json', async (req, res) => {
 // Get Matched Filler
 app.get('/api/match', async (req, res) => {
     // Grab the parameters
-    const sentence = req.body.sentence;
+    const { sentence, indexName, neighbors } = req.query;
 
     // Check to make sure indexName is present
-    if (!req.body.indexName) {
+    if (!indexName) {
         res.status(400).send({ error: 'Missing indexName parameter' });
         return;
     }
-    const indexName = req.body.indexName;
 
     const indexingPath = path.join(indexingBasePath, indexName + '.hnsw');
-    const nearestNeighbors = parseInt(req.body.neighbors) || NN;
+    const nearestNeighbors = parseInt(neighbors) || NN;
     const is_existing_index = await checkFileExists(indexingPath);
 
     if (!sentence) {
