@@ -91,8 +91,8 @@ export async function returnMatchedFiller(
 
     // Map the QnAs to the desired output format
     return qnas.map((qna) => ({
-        closestMatchingQuestion: qna.question,
-        answerToQuestion: qna.answer,
+        question: qna.question, // closestMatchingQuestion
+        answer: qna.answer, // answerToQuestion
     }));
 }
 
