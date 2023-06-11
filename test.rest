@@ -51,10 +51,10 @@ Content-Type: application/json
 }
 
 ###
-GET http://localhost:3000/api/match?sentence=hello%3F&indexName=test
+GET http://localhost:3000/api/match?sentence=hello%3F&indexName=20&neighbors=3
 Content-Type: application/json
 
-{
-    "indexName":20,
-    "sentence":"Where is my Key?"
-}
+# {
+#     "indexName":20,
+#     "sentence":"Where is my Key?"
+# }

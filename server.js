@@ -160,9 +160,9 @@ app.get('/api/match', async (req, res) => {
         nearestNeighbors,
         DEBUG
     );
-    res.send({
-        ...result,
-    });
+
+    console.log(result);
+    res.send(result);
 });
 
 // --------------------------------------------------------------------------- //

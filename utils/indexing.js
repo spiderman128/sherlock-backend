@@ -74,16 +74,12 @@ export async function returnMatchedFiller(
 
     let start = performance.now();
 
-    let arrayOfQuestionsAndAnswers = [];
-    for (let match of result.neighbors) {
-        // const firstNeighbor = result.neighbors[0];
-        const qna = await QnAModel.getQnA(match);
-
-        arrayOfQuestionsAndAnswers.push({
-            closestMatchingQuestion: qna.question,
-            answerToQuestion: qna.answer,
-        });
-    }
+    // Get QnAs for all neighbors
+    let qnas = await Promise.all(
+        result.neighbors.map(async (neighbor) => {
+            return await QnAModel.getQnA(neighbor);
+        })
+    );
 
     if (debug) {
         console.log(
@@ -93,7 +89,11 @@ export async function returnMatchedFiller(
         );
     }
 
-    return arrayOfQuestionsAndAnswers;
+    // Map the QnAs to the desired output format
+    return qnas.map((qna) => ({
+        closestMatchingQuestion: qna.question,
+        answerToQuestion: qna.answer,
+    }));
 }
 
 export function getContentByKey(arr, key) {
