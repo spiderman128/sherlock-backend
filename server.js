@@ -125,13 +125,14 @@ app.post('/api/json', async (req, res) => {
     });
 });
 
-// --------------------------------------------------------------------------------- //
+// ------------------------------------------------------------------------------------- //
 // ** SINGLE OBJ ACTION **: FETCH EMBEDDING MATCHES FROM SPECIFIC indexName VECTOR STORE //
-// --------------------------------------------------------------------------------- //
+// ------------------------------------------------------------------------------------- //
 // Get Matched Filler
 app.get('/api/match', async (req, res) => {
     // Grab the parameters
     const { sentence, indexName, neighbors } = req.query;
+    console.log(sentence, indexName, neighbors);
 
     // Check to make sure indexName is present
     if (!indexName) {

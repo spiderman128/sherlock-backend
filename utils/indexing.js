@@ -74,8 +74,16 @@ export async function returnMatchedFiller(
 
     let start = performance.now();
 
-    const firstNeighbor = result.neighbors[0];
-    const qna = await QnAModel.getQnA(firstNeighbor);
+    let arrayOfQuestionsAndAnswers = [];
+    for (let match of result.neighbors) {
+        // const firstNeighbor = result.neighbors[0];
+        const qna = await QnAModel.getQnA(match);
+
+        arrayOfQuestionsAndAnswers.push({
+            closestMatchingQuestion: qna.question,
+            answerToQuestion: qna.answer,
+        });
+    }
 
     if (debug) {
         console.log(
@@ -84,10 +92,8 @@ export async function returnMatchedFiller(
             } milliseconds (ie. converting embedding ID into fillerText value).`
         );
     }
-    return {
-        closestMatchingQuestion: qna.question,
-        answerToQuestion: qna.answer,
-    };
+
+    return arrayOfQuestionsAndAnswers;
 }
 
 export function getContentByKey(arr, key) {
