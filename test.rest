@@ -5,7 +5,7 @@ POST http://localhost:3000/search/update
 Content-Type: application/json
 
 {
-    "orgId":20
+    "indexName":20
 }
 
 ###
@@ -13,7 +13,7 @@ POST http://localhost:3000/api/embed
 Content-Type: application/json
 
 {
-    "orgId":20,
+    "indexName":20,
     "question": "What is the status of my order?",
     "answer": "Your order is in transit. It will be delivered by 5pm today."
 }
@@ -32,19 +32,19 @@ POST http://localhost:3000/api/json
 Content-Type: application/json
 
 [{
-"orgId":21,
+"indexName":21,
 "question": "Where is my order?",
 "answer": "Your food is on the way. It will be delivered by 5pm today."
 },{
-"orgId":20,
+"indexName":20,
 "question": "Where is job?",
 "answer": "your job is waiting for you."
 },{
-"orgId":20,
+"indexName":20,
 "question": "Where is my food?",
 "answer": "Your food is in the kitchen."
 },{
-"orgId":20,
+"indexName":20,
 "question": "Where is my Key?",
 "answer": "Your food is in the bedroom."
 }]
@@ -55,7 +55,7 @@ DELETE http://localhost:3000/api/delete
 Content-Type: application/json
 
 {
-    "orgId":20,
+    "indexName":20,
     "question":"Where is my Key?"
 }
 
@@ -73,6 +73,6 @@ GET http://localhost:3000/api/match
 Content-Type: application/json
 
 {
-    "orgId":20,
+    "indexName":20,
     "sentence":"Where is my Key?"
 }
