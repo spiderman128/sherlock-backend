@@ -31,25 +31,25 @@ const NN = 1; // the number of nearest neighbors to search.
 let model;
 
 // ------------------------------------------------------------------------------------------- //
-// ** BULK ACTION **: EMBEDD FILES IN THE 'to_process' FOLDER THAT PERTAIN TO A SPECIFIC ORGID //
+// ** BULK ACTION **: EMBEDD FILES IN THE 'to_process' FOLDER THAT PERTAIN TO A SPECIFIC indexName //
 // ------------------------------------------------------------------------------------------- //
 // update embeddings
 app.post('/search/update', async (req, res) => {
-    // Check to make sure orgId is present
-    if (!req.body.orgId) {
-        res.status(400).send({ error: 'Missing orgId parameter' });
+    // Check to make sure indexName is present
+    if (!req.body.indexName) {
+        res.status(400).send({ error: 'Missing indexName parameter' });
         return;
     }
 
-    const orgId = req.body.orgId;
-    const indexingPath = path.join(indexingBasePath, orgId + '.hnsw');
+    const indexName = req.body.indexName;
+    const indexingPath = path.join(indexingBasePath, indexName + '.hnsw');
     // Add any embeddings from the to_process folder
     await addEmbeddings(
         model,
         dataProcessingPath,
         dataProcessedPath,
         indexingPath,
-        orgId,
+        indexName,
         DEBUG
     );
 
@@ -63,17 +63,17 @@ app.post('/search/update', async (req, res) => {
 });
 
 // --------------------------------------------------------------------- //
-// ** SINGLE OBJ ACTION **: ADD EMBEDDING TO SPECIFIC ORGID VECTOR STORE //
+// ** SINGLE OBJ ACTION **: ADD EMBEDDING TO SPECIFIC indexName VECTOR STORE //
 // --------------------------------------------------------------------- //
 app.post('/api/embed', async (req, res) => {
-    // Check to make sure orgId is present
-    if (!req.body.orgId) {
-        res.status(400).send({ error: 'Missing orgId parameter' });
+    // Check to make sure indexName is present
+    if (!req.body.indexName) {
+        res.status(400).send({ error: 'Missing indexName parameter' });
         return;
     }
     // Grab the parameters
-    const { question, orgId = defaultIndexing, answer } = req.body;
-    const indexingPath = path.join(indexingBasePath, orgId + '.hnsw');
+    const { question, indexName = defaultIndexing, answer } = req.body;
+    const indexingPath = path.join(indexingBasePath, indexName + '.hnsw');
 
     if (!question || !answer) {
         res.status(400).send({ error: 'Missing question or answer parameter' });
@@ -81,7 +81,7 @@ app.post('/api/embed', async (req, res) => {
     }
 
     // Add the embedding to the indexing
-    await addToIndex(indexingPath, model, orgId, question, answer, DEBUG);
+    await addToIndex(indexingPath, model, indexName, question, answer, DEBUG);
 
     await saveDataToS3(s3, bucketName, './data/indexing', 'indexing').catch(
         (err) => {
@@ -126,21 +126,21 @@ app.post('/api/json', async (req, res) => {
 });
 
 // --------------------------------------------------------------------------------- //
-// ** SINGLE OBJ ACTION **: FETCH EMBEDDING MATCHES FROM SPECIFIC ORGID VECTOR STORE //
+// ** SINGLE OBJ ACTION **: FETCH EMBEDDING MATCHES FROM SPECIFIC indexName VECTOR STORE //
 // --------------------------------------------------------------------------------- //
 // Get Matched Filler
 app.get('/api/match', async (req, res) => {
     // Grab the parameters
     const sentence = req.body.sentence;
 
-    // Check to make sure orgId is present
-    if (!req.body.orgId) {
-        res.status(400).send({ error: 'Missing orgId parameter' });
+    // Check to make sure indexName is present
+    if (!req.body.indexName) {
+        res.status(400).send({ error: 'Missing indexName parameter' });
         return;
     }
-    const orgId = req.body.orgId;
+    const indexName = req.body.indexName;
 
-    const indexingPath = path.join(indexingBasePath, orgId + '.hnsw');
+    const indexingPath = path.join(indexingBasePath, indexName + '.hnsw');
     const nearestNeighbors = parseInt(req.body.neighbors) || NN;
     const is_existing_index = await checkFileExists(indexingPath);
 
@@ -166,20 +166,20 @@ app.get('/api/match', async (req, res) => {
 });
 
 // --------------------------------------------------------------------------- //
-// ** SINGLE OBJ ACTION **: DELETE EMBEDDINGS FROM SPECIFIC ORGID VECTOR STORE //
+// ** SINGLE OBJ ACTION **: DELETE EMBEDDINGS FROM SPECIFIC indexName VECTOR STORE //
 // --------------------------------------------------------------------------- //
 // Delete Embedding
 app.delete('/api/delete', async (req, res) => {
     const textToDelete = req.body.question;
 
-    // Check to make sure orgId is present
-    if (!req.body.orgId) {
-        res.status(400).send({ error: 'Missing orgId parameter' });
+    // Check to make sure indexName is present
+    if (!req.body.indexName) {
+        res.status(400).send({ error: 'Missing indexName parameter' });
         return;
     }
-    const orgId = req.body.orgId;
+    const indexName = req.body.indexName;
 
-    const indexingPath = path.join(indexingBasePath, orgId + '.hnsw');
+    const indexingPath = path.join(indexingBasePath, indexName + '.hnsw');
     const is_existing_index = await checkFileExists(indexingPath);
 
     if (!textToDelete) {
