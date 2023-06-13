@@ -16,11 +16,11 @@
         "@tensorflow/tfjs-node": "^4.6.0",
         "@tensorflow/tfjs-node-gpu": "^4.6.0",
         "aws-sdk": "^2.1388.0",
+        "cors": "^2.8.5",
         "crypto": "^1.0.1",
         "dotenv": "^16.1.1",
         "express": "^4.18.2",
         "hnswlib-node": "^1.4.2",
         "sqlite3": "^5.1.6"
-    },
-    "devDependencies": {}
+    }
 }

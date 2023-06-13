@@ -9,11 +9,13 @@ import {
 } from './utils/indexing.js';
 import express from 'express';
 import path from 'path';
+import cors from 'cors';
 import { s3, saveDataToS3, loadDataFromS3 } from './utils/persistent.js';
 import InitDatabase from './models/initDB.model.js';
 
 const app = express();
 const port = process.env.PORT || 3000;
+app.use(cors())
 app.use(express.json());
 
 // ------------------------------------------------------------------------------------------- //
@@ -128,10 +130,10 @@ app.post('/api/json', async (req, res) => {
 // ------------------------------------------------------------------------------------- //
 // ** SINGLE OBJ ACTION **: FETCH EMBEDDING MATCHES FROM SPECIFIC indexName VECTOR STORE //
 // ------------------------------------------------------------------------------------- //
-// Get Matched Filler
-app.get('/api/match', async (req, res) => {
+// Post Matched Filler
+app.post('/api/match', async (req, res) => {
     // Grab the parameters
-    const { sentence, indexName, neighbors } = req.query;
+    const { sentence, indexName, neighbors } = req.body;
     console.log(sentence, indexName, neighbors);
 
     // Check to make sure indexName is present
