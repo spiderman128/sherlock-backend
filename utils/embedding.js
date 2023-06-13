@@ -2,6 +2,7 @@
 import * as tf from '@tensorflow/tfjs'; // Need this of tfjs-node
 import * as tfn from '@tensorflow/tfjs-node'; // Need this to make queries 100x faster
 import * as encoder from '@tensorflow-models/universal-sentence-encoder';
+import { performance } from 'perf_hooks';
 import '@tensorflow/tfjs-backend-cpu'; // Import the CPU and WebGL backends to increase performance
 
 /**

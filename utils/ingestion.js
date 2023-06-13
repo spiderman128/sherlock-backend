@@ -1,4 +1,5 @@
 import fs from 'fs/promises';
+import { performance } from 'perf_hooks';
 import path from 'path';
 
 // This function reads the content of a single file, given its file path, and returns the content as a string. It's useful when you have a specific file and you want to read its content.
