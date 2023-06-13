@@ -28,7 +28,7 @@ const dataProcessedPath = './data/processed';
 const DBBasepath = './data/indexing/';
 const indexingBasePath = './data/indexing/';
 const defaultIndexing = 'defaultIndex';
-const bucketName = 'sherlock-inmemorysearch';
+const bucketName = 'airchat-persistent-vectorstorage';
 const NN = 1; // the number of nearest neighbors to search.
 let model;
 
