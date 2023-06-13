@@ -2,6 +2,7 @@ import pkg from 'hnswlib-node'; // Import the HNSW library
 const { HierarchicalNSW } = pkg;
 import fillerMap from './fillerMap.js';
 import path from 'path';
+import { performance } from 'perf_hooks';
 import { convertToEmbedding } from './embedding.js';
 import { checkFileExists, extractPageContentAndMetadata } from './ingestion.js';
 import QnAModel from '../models/qna.model.js';
